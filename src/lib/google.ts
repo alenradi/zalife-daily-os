@@ -173,6 +173,40 @@ export async function createCalendarEvent(
   return res.json();
 }
 
+export async function updateCalendarEvent(
+  token: string,
+  eventId: string,
+  event: CalendarEventInput
+): Promise<{ id: string }> {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const body = {
+    summary: event.summary,
+    description: event.description,
+    start: { dateTime: event.startISO, timeZone: tz },
+    end: { dateTime: event.endISO, timeZone: tz },
+  };
+
+  if (token.startsWith("demo_token_")) {
+    console.log("[calendar:demo] update event", eventId, body);
+    await new Promise((r) => setTimeout(r, 200));
+    return { id: eventId };
+  }
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(`Calendar update failed: ${res.status}`);
+  return res.json();
+}
+
 // ---- Calendar event listing (import) --------------------------------------
 
 export interface GoogleCalendarEvent {

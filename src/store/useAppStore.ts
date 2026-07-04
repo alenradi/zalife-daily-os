@@ -285,11 +285,17 @@ export interface AppState {
   addPlannerTask: (
     dateISO: string,
     data: Omit<PlannerTask, "id" | "completed" | "created_at">
+  ) => string;
+  updatePlannerTask: (
+    dateISO: string,
+    id: string,
+    patch: Partial<PlannerTask>,
+    recurring?: boolean
   ) => void;
   mergeCalendarTasksForDay: (
     dateISO: string,
     incoming: Omit<PlannerTask, "id" | "completed" | "created_at" | "recurring">[]
-  ) => { added: number; skipped: number };
+  ) => { added: number; updated: number; skipped: number };
   togglePlannerTask: (dateISO: string, id: string, recurring: boolean) => void;
   deletePlannerTask: (dateISO: string, id: string, recurring: boolean) => void;
 
@@ -688,23 +694,59 @@ export const useAppStore = create<AppState>()((set, get) => {
             },
           }));
         }
+        return task.id;
+      },
+
+      updatePlannerTask: (dateISO, id, patch, recurring = false) => {
+        if (recurring) {
+          set((s) => ({
+            recurring_tasks: s.recurring_tasks.map((t) =>
+              t.id === id ? { ...t, ...patch } : t
+            ),
+          }));
+          return;
+        }
+        set((s) => ({
+          planner_tasks: {
+            ...s.planner_tasks,
+            [dateISO]: (s.planner_tasks[dateISO] ?? []).map((t) =>
+              t.id === id ? { ...t, ...patch } : t
+            ),
+          },
+        }));
       },
 
       mergeCalendarTasksForDay: (dateISO, incoming) => {
         const existing = get().planner_tasks[dateISO] ?? [];
-        const calIds = new Set(
-          existing.map((t) => t.calendar_event_id).filter(Boolean) as string[]
+        const byCalId = new Map(
+          existing
+            .filter((t) => t.calendar_event_id)
+            .map((t) => [t.calendar_event_id!, t.id])
         );
         const titles = new Set(
           existing.map((t) => t.title.trim().toLowerCase())
         );
         let added = 0;
+        let updated = 0;
         let skipped = 0;
-        const next = [...existing];
+        const next = existing.map((t) => ({ ...t }));
 
         for (const item of incoming) {
-          if (item.calendar_event_id && calIds.has(item.calendar_event_id)) {
-            skipped++;
+          if (item.calendar_event_id && byCalId.has(item.calendar_event_id)) {
+            const idx = next.findIndex(
+              (t) => t.calendar_event_id === item.calendar_event_id
+            );
+            if (idx >= 0) {
+              next[idx] = {
+                ...next[idx],
+                title: item.title,
+                duration_minutes: item.duration_minutes,
+                start_time: item.start_time ?? next[idx].start_time,
+                end_time: item.end_time ?? next[idx].end_time,
+                from_calendar: true,
+              };
+              updated++;
+            } else skipped++;
             continue;
           }
           const normTitle = item.title.trim().toLowerCase();
@@ -720,17 +762,17 @@ export const useAppStore = create<AppState>()((set, get) => {
             created_at: new Date().toISOString(),
           };
           next.push(task);
-          if (task.calendar_event_id) calIds.add(task.calendar_event_id);
+          if (task.calendar_event_id) byCalId.set(task.calendar_event_id, task.id);
           titles.add(normTitle);
           added++;
         }
 
-        if (added > 0) {
+        if (added > 0 || updated > 0) {
           set((s) => ({
             planner_tasks: { ...s.planner_tasks, [dateISO]: next },
           }));
         }
-        return { added, skipped };
+        return { added, updated, skipped };
       },
 
       togglePlannerTask: (dateISO, id, recurring) => {

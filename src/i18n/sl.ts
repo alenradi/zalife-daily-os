@@ -76,6 +76,17 @@ export const sl = {
     prefixZato: "zato bom izvedel nalogo:",
     needPillar: "Izberi steber, da dodaš nalogo.",
     needTrait: "Vpiši svojo lastnost / identiteto.",
+    identityIntroMapa:
+      "Identiteta na področju se avtomatsko prevzame iz Mapa Življenja. Vpišeš le opis naloge in čas.",
+    identityFromMapa: "Kakšen sem / postajam (iz Mapa Življenja)",
+    identityMapaEmpty:
+      "Na tem področju še nisi zapisal identitete. Odpri Mapa Življenja in jo dopolni.",
+    addTask: "Dodaj nalogo",
+    editTask: "Uredi nalogo",
+    newTask: "Nova naloga",
+    dayOverview: "Pregled dneva",
+    timeStart: "Začetek",
+    timeEnd: "Konec",
   },
 
   locks: {

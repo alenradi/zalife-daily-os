@@ -24,6 +24,8 @@ export interface PlannerTask {
   pillar_id?: string; // which Life Pillar this action serves
   identity_trait?: string; // the trait/identity the user is acting from
   task_description?: string; // the raw action description
+  start_time?: string; // HH:mm local — day schedule slot
+  end_time?: string; // HH:mm local
   calendar_event_id?: string; // Google Calendar event id (import / dedup)
   from_calendar?: boolean;
 }
