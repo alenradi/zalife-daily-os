@@ -30,6 +30,12 @@ export const sl = {
     haveAccount: "Že imaš račun? Prijavi se",
     noAccount: "Nimaš računa? Registriraj se",
     connecting: "Povezujem ...",
+    googleNotConfigured:
+      "Google prijava ni nastavljena na strežniku. V Vercel dodaj VITE_GOOGLE_CLIENT_ID in ponovno objavi (Redeploy).",
+    googleInvalidClient:
+      "Google OAuth klient ni najden. V Google Cloud Console dodaj produkcijski URL (npr. https://tvoja-app.vercel.app) med Authorized JavaScript origins.",
+    googleDenied: "Google prijava preklicana. Poskusi znova.",
+    googleFailed: "Google prijava ni uspela. Poskusi znova.",
     legal:
       "Z nadaljevanjem se strinjaš z disciplino voditelja: iskrenost, doslednost in 'IN namesto AMPAK'.",
     logout: "Odjava",

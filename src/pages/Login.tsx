@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useAppStore } from "../store/useAppStore";
 import { markFreshUserSession } from "../hooks/useUserSession";
 import {
+  isGoogleConfigured,
   requestGoogleAccess,
   fetchGoogleUser,
 } from "../lib/google";
@@ -55,9 +56,13 @@ export function Login() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(
-        msg.includes("invalid_client")
-          ? "Google OAuth klient ni najden. V Google Cloud Console ustvari OAuth klient tipa »Web application«, kopiraj Client ID in dodaj http://localhost:5173 med Authorized JavaScript origins."
-          : "Google prijava ni uspela. Poskusi znova."
+        msg.includes("google_not_configured")
+          ? sl.auth.googleNotConfigured
+          : msg.includes("invalid_client")
+            ? sl.auth.googleInvalidClient
+            : msg.includes("access_denied")
+              ? sl.auth.googleDenied
+              : sl.auth.googleFailed
       );
       console.error(e);
     } finally {
@@ -124,10 +129,15 @@ export function Login() {
             </button>
           </div>
 
+          {!isGoogleConfigured() && import.meta.env.PROD && (
+            <div className="auth-config-warn">
+              {sl.auth.googleNotConfigured}
+            </div>
+          )}
           <button
             className="btn google-btn btn-block"
             onClick={onGoogle}
-            disabled={googleBusy}
+            disabled={googleBusy || (!isGoogleConfigured() && import.meta.env.PROD)}
           >
             <GoogleIcon />
             {googleBusy ? sl.auth.connecting : sl.auth.google}

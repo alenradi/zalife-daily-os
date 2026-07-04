@@ -1134,6 +1134,16 @@ input, textarea, select { font-family: var(--font-body); }
 }
 .google-btn:hover { filter: brightness(0.97); transform: translateY(-1px); }
 .google-btn:disabled { opacity: 0.6; }
+.auth-config-warn {
+  background: rgba(255, 51, 51, 0.1);
+  border: 1px solid rgba(255, 51, 51, 0.35);
+  color: #ffb4b4;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  margin-bottom: 12px;
+}
 
 .auth-divider {
   display: flex;

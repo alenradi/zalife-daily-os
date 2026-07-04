@@ -5,12 +5,16 @@
  * Requires `VITE_GOOGLE_CLIENT_ID` (a Google Cloud OAuth Web client id with
  * the app origin registered under "Authorized JavaScript origins").
  *
- * When the client id is absent we run in DEMO mode so the UI stays usable.
+ * Demo mode only runs in local dev when the client id is missing.
+ * Production builds must set VITE_GOOGLE_CLIENT_ID at build time (Vercel env).
  */
 
 const CLIENT_ID = (
   import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 )?.trim();
+
+const DEMO_ALLOWED =
+  import.meta.env.DEV && import.meta.env.VITE_GOOGLE_DEMO !== "0";
 
 // One consent covers identity + calendar so the user grants everything once.
 const SCOPES = [
@@ -65,12 +69,17 @@ function loadGis(): Promise<void> {
 
 export async function requestGoogleAccess(): Promise<GoogleToken> {
   if (!isGoogleConfigured()) {
-    // DEMO mode: synthesize a short-lived fake token.
-    await new Promise((r) => setTimeout(r, 700));
-    return {
-      access_token: `demo_token_${Math.random().toString(36).slice(2)}`,
-      expires_at: Date.now() + 3600_000,
-    };
+    if (DEMO_ALLOWED) {
+      // Local dev only — never on Vercel/production.
+      await new Promise((r) => setTimeout(r, 700));
+      return {
+        access_token: `demo_token_${Math.random().toString(36).slice(2)}`,
+        expires_at: Date.now() + 3600_000,
+      };
+    }
+    throw new Error(
+      "google_not_configured: VITE_GOOGLE_CLIENT_ID manjka. Na Vercel dodaj env spremenljivko in ponovno objavi."
+    );
   }
 
   await loadGis();
