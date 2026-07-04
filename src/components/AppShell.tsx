@@ -11,6 +11,7 @@ import { useAppStore } from "../store/useAppStore";
 import { isSundayResetOpen, weekId } from "../lib/date";
 import { Onboarding } from "./Onboarding";
 import { AgentFab } from "./AgentFab";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const TITLES: Record<string, { title: string; sub: string }> = {
   "/": { title: sl.nav.dashboard, sub: sl.dashboard.subtitle },
@@ -31,6 +32,7 @@ export function AppShell() {
   const reset = useAppStore((s) => s.weekly_resets[weekId()]);
   const meta = TITLES[loc.pathname] ?? { title: sl.app.name, sub: "" };
   const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 820px)");
 
   // Auto-close the mobile drawer whenever the route changes.
   useEffect(() => {
@@ -78,9 +80,11 @@ export function AppShell() {
         </div>
         <Footer />
       </div>
-      <aside className="mentor-rail" aria-label={sl.mentor.title}>
-        <MentorPanel />
-      </aside>
+      {!isMobile && (
+        <aside className="mentor-rail" aria-label={sl.mentor.title}>
+          <MentorPanel />
+        </aside>
+      )}
       <MobileNav onMore={() => setMenuOpen(true)} />
       <AgentFab />
     </div>

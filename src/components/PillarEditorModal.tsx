@@ -14,7 +14,6 @@ interface PillarEditorModalProps {
 export function PillarEditorModal({ pillar, onClose }: PillarEditorModalProps) {
   const pillars = useAppStore((s) => s.pillars);
   const updateMetric = useAppStore((s) => s.updatePillarMetric);
-  const updateIdentity = useAppStore((s) => s.updatePillarIdentity);
 
   const state = pillars.find((p) => p.pillar_id === pillar.id);
 
@@ -59,16 +58,6 @@ export function PillarEditorModal({ pillar, onClose }: PillarEditorModalProps) {
         </div>
 
         <div className="pillar-modal-body">
-          <div className="pillar-future pillar-future-modal">
-            <label>{sl.identity.futureSelfLabel}</label>
-            <GuardedTextarea
-              rows={4}
-              value={state?.future_self_identity ?? ""}
-              placeholder={sl.identity.futureSelfPlaceholder}
-              onChange={(e) => updateIdentity(pillar.id, e.target.value)}
-            />
-          </div>
-
           <div className="pillar-metrics-modal">
             {pillar.metrics.map((m) => {
               const metric = state?.metrics.find((x) => x.key === m.key);
@@ -80,6 +69,17 @@ export function PillarEditorModal({ pillar, onClose }: PillarEditorModalProps) {
                     <span className="text-teal pillar-metric-value">{value}</span>
                   </div>
                   <p className="small text-muted metric-hint">{m.hint}</p>
+                  <label className="field-label pillar-jaz-sem-label">
+                    {sl.identity.jazSemSubareaLabel}
+                  </label>
+                  <GuardedTextarea
+                    rows={3}
+                    value={metric?.jaz_sem ?? ""}
+                    placeholder={sl.identity.jazSemSubareaPlaceholder}
+                    onChange={(e) =>
+                      updateMetric(pillar.id, m.key, { jaz_sem: e.target.value })
+                    }
+                  />
                   <div className="slider-wrap">
                     <input
                       type="range"
@@ -95,7 +95,7 @@ export function PillarEditorModal({ pillar, onClose }: PillarEditorModalProps) {
                     />
                   </div>
                   <GuardedTextarea
-                    rows={3}
+                    rows={2}
                     value={metric?.note ?? ""}
                     placeholder={`Zapiski: ${m.hint}`}
                     onChange={(e) =>
@@ -135,7 +135,8 @@ export function PillarCard({
           state.metrics.reduce((a, m) => a + m.value, 0) / state.metrics.length
         )
       : 0;
-  const preview = state?.future_self_identity?.trim() || "—";
+  const preview =
+    state?.metrics.find((m) => m.jaz_sem?.trim())?.jaz_sem.trim() || "—";
 
   return (
     <button className="pillar pillar-card-btn" type="button" onClick={onOpen}>

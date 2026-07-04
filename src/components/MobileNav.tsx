@@ -1,18 +1,41 @@
+import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { sl } from "../i18n/sl";
+import { dailyFlowNav } from "../lib/date";
 
 interface MobileNavProps {
   onMore: () => void;
 }
 
+const PHASE_LABELS = {
+  morning: sl.nav.morning,
+  midday: sl.nav.midday,
+  night: sl.nav.night,
+} as const;
+
 /** Fixed bottom navigation for phones. Most-used routes + a "more" drawer. */
 export function MobileNav({ onMore }: MobileNavProps) {
-  const items = [
-    { to: "/", label: sl.nav.dashboard, icon: "◎" },
-    { to: "/tasks", label: sl.nav.tasks, icon: "✓" },
-    { to: "/morning", label: sl.nav.morning, icon: "☀" },
-    { to: "/leaderboard", label: sl.nav.leaderboard, icon: "≣" },
-  ];
+  const [flowNav, setFlowNav] = useState(() => dailyFlowNav());
+
+  useEffect(() => {
+    setFlowNav(dailyFlowNav());
+    const id = window.setInterval(() => setFlowNav(dailyFlowNav()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const items = useMemo(
+    () => [
+      { to: "/", label: sl.nav.dashboard, icon: "◎" },
+      { to: "/tasks", label: sl.nav.tasks, icon: "✓" },
+      {
+        to: flowNav.to,
+        label: PHASE_LABELS[flowNav.phase],
+        icon: flowNav.icon,
+      },
+      { to: "/leaderboard", label: sl.nav.leaderboard, icon: "≣" },
+    ],
+    [flowNav]
+  );
 
   return (
     <nav className="mobile-nav" aria-label={sl.nav.sectionDaily}>

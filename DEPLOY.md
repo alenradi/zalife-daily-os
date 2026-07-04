@@ -36,14 +36,18 @@ Add these for **Production**, **Preview**, and **Development**:
 | Variable | Required | Notes |
 |----------|----------|-------|
 | `VITE_GOOGLE_CLIENT_ID` | Yes | Google OAuth Web client ID |
-| `VITE_SUPABASE_URL` | Yes | `https://xxxxx.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase publishable / anon key |
+| `VITE_SUPABASE_URL` | Yes | `https://raqpqmasmvfuwdefdsiw.supabase.co` (your project URL) |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase **anon** or **publishable** key from Dashboard → Settings → API Keys |
 | `VITE_ADMIN_CODE` | Yes | Change from default — admin passcode |
 | `OPENAI_API_KEY` | Later | Server-side only — enables GPT-4o mini mentor |
 
 Do **not** prefix `OPENAI_API_KEY` with `VITE_` (keeps it server-side).
 
 After adding vars, redeploy: **Deployments → … → Redeploy**.
+
+**Important:** Vite bakes `VITE_*` variables into the build at deploy time. If chat or cloud sync returns auth errors on production, the keys were missing during the last build — add them and redeploy.
+
+Run the chat section of `supabase/schema.sql` in Supabase SQL Editor (creates `public_chat_messages` table). Without it, chat uses a snapshot fallback which also needs valid API keys.
 
 ---
 

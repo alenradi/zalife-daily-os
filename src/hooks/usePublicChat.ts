@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchPublicChatMessages,
+  probePublicChatAuth,
   sendPublicChatMessage,
   subscribePublicChat,
 } from "../api/publicChat";
@@ -32,6 +33,10 @@ export function usePublicChat(userId: string | null) {
     let active = true;
     setLoading(true);
     setError("");
+
+    void probePublicChatAuth().then((authError) => {
+      if (active && authError) setError(authError);
+    });
 
     void fetchPublicChatMessages()
       .then((rows) => {

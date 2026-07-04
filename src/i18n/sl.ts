@@ -81,6 +81,12 @@ export const sl = {
     identityFromMapa: "Kakšen sem / postajam (iz Mapa Življenja)",
     identityMapaEmpty:
       "Na tem področju še nisi zapisal identitete. Odpri Mapa Življenja in jo dopolni.",
+    subareaSelect: "Izberi podpodročje",
+    subareaSelectPlaceholder: "— Izberi podpodročje —",
+    identityFromMapaSub: "Identiteta za izbrano podpodročje (iz Mapa Življenja)",
+    identityMapaEmptySub:
+      "Za to podpodročje še nisi zapisal identitete. Odpri Mapa Življenja in jo dopolni.",
+    needSubarea: "Izberi podpodročje stebra.",
     addTask: "Dodaj nalogo",
     editTask: "Uredi nalogo",
     newTask: "Nova naloga",
@@ -205,6 +211,8 @@ export const sl = {
     // Per-pillar future self (Mapa Življenja)
     futureSelfLabel: "Kakšen sem in postajam v prihodnosti na tem področju?",
     futureSelfPlaceholder: "V prihodnosti na tem področju postajam ...",
+    jazSemSubareaLabel: "Kakšen sem na tem podpodročju?",
+    jazSemSubareaPlaceholder: "Na tem podpodročju sem ...",
   },
 
   dashboard: {
@@ -331,6 +339,9 @@ export const sl = {
   mentor: {
     title: "AI Mentor",
     subtitle: "Tvoj ZaLife vodja. Brez mehčanja. Drži te odgovornega.",
+    comingSoonBadge: "V razvoju",
+    comingSoonBody:
+      "AI mentor je trenutno v razvoju in bo kmalu na voljo. Do takrat uporabljaj jutranji plan, naloge in opomnike — ostani v FLOW.",
     placeholder: "Vprašaj svojega mentorja ...",
     send: "Pošlji",
     thinking: "Mentor razmišlja ...",
@@ -445,6 +456,26 @@ export const sl = {
     deadlineTaskTitle: "Odprte dnevne prioritete",
     deadlineTaskMsg:
       "Dan se izteka, te ključne naloge pa so še odprte. Zaključi jih, preden padeš v Zanik:",
+    deadlinePlannerTitle: "Zamujene naloge",
+    deadlinePlannerMsg:
+      "Načrtovani čas za te naloge je že minil. Ukrepaj zdaj ali jih prestavi:",
+    cycleTitle: (phase: string) => {
+      if (phase === "midday") return "Opoldanski check-in čaka";
+      if (phase === "night") return "Večerna refleksija čaka";
+      return "Jutranji plan še ni oddan";
+    },
+    cycleMsg: (phase: string) => {
+      if (phase === "midday")
+        return "Opoldne je za nami — še nisi oddal opoldanskega check-ina. Vrni se v tok vodenja.";
+      if (phase === "night")
+        return "Dan se zaključuje — večerna refleksija še ni oddana. Zapri dan z jasnostjo.";
+      return "Jutro je mimo — še nisi postavil jutranjega plana. Določi 3 prioritete in identiteto dneva.";
+    },
+    gotoCycle: (phase: string) => {
+      if (phase === "midday") return "Odpri opoldanski check-in";
+      if (phase === "night") return "Odpri večerno refleksijo";
+      return "Odpri jutranji plan";
+    },
     gotoTasks: "Pojdi na naloge",
     dismiss: "Razumem",
   },

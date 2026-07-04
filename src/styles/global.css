@@ -130,7 +130,11 @@ input, textarea, select { font-family: var(--font-body); }
 
 /* ---------- Sidebar ---------- */
 .sidebar {
-  background: linear-gradient(180deg, rgba(42, 46, 55, 0.7), rgba(21, 23, 28, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(22, 24, 30, 0.97),
+    rgba(12, 14, 18, 0.98)
+  );
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -175,6 +179,11 @@ input, textarea, select { font-family: var(--font-body); }
 .logo-slot img,
 .logo-img {
   /* JPEG logo ships with black matte — screen blend hides it on dark UI */
+}
+.sidebar .logo-slot,
+.onboarding-logo-wrap {
+  background: #0c0e12;
+  isolation: isolate;
 }
 
 .brand-text b { color: var(--white); font-family: var(--font-display); font-size: 15px; display: block; }
@@ -1919,15 +1928,21 @@ input, textarea, select { font-family: var(--font-body); }
     transform: translateX(-100%);
     transition: transform 0.26s ease;
     z-index: 200;
+    background: rgba(10, 12, 16, 0.92);
+    backdrop-filter: blur(28px) saturate(1.35);
+    -webkit-backdrop-filter: blur(28px) saturate(1.35);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
   }
   .app-shell.menu-open .sidebar {
     transform: translateX(0);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.65);
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.55);
   }
   .mobile-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     z-index: 150;
     animation: fadeIn 0.2s ease;
   }
@@ -2221,6 +2236,8 @@ input, textarea, select { font-family: var(--font-body); }
   width: 28px;
   height: 28px;
   border-radius: 8px;
+  background: #0c0e12;
+  isolation: isolate;
 }
 @media (min-width: 1221px) {
   .agent-fab { display: none !important; }
@@ -2265,6 +2282,30 @@ input, textarea, select { font-family: var(--font-body); }
 .agent-drawer-head h3 { margin: 0; font-size: 16px; }
 .mentor-panel-compact .mentor-chat-wrap { min-height: 280px; }
 .mentor-panel-compact .chat-feed { max-height: 42vh; }
+
+.mentor-panel-soon .mentor-soon-body {
+  padding: 20px 16px 24px;
+  text-align: center;
+}
+.mentor-soon-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(239, 167, 59, 0.35);
+  background: rgba(239, 167, 59, 0.1);
+  margin-bottom: 14px;
+}
+.mentor-soon-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--silver);
+}
 
 /* Public community chat */
 .public-chat-page { max-width: 900px; }

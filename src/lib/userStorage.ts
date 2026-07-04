@@ -33,6 +33,7 @@ export function pickPersistable(state: AppState): Record<string, unknown> {
     drift_handled_date: state.drift_handled_date,
     last_reminder_at: state.last_reminder_at,
     alerted_goals: state.alerted_goals,
+    alerted_reminders: state.alerted_reminders,
     daily_logs: state.daily_logs,
     weekly_resets: state.weekly_resets,
     next_week_unlocked: state.next_week_unlocked,

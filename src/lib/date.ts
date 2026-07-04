@@ -75,6 +75,22 @@ export function isSundayResetOpen(d = zonedNow()): boolean {
   return isSunday(d) && d.getHours() >= HOURS.SUNDAY_OPEN;
 }
 
+/** Nav target for the mobile bottom bar center slot (changes through the day). */
+export function dailyFlowNav(d = zonedNow()): {
+  to: string;
+  phase: "morning" | "midday" | "night";
+  icon: string;
+} {
+  const h = d.getHours();
+  if (h >= HOURS.NIGHT_OPEN) {
+    return { to: "/night", phase: "night", icon: "☾" };
+  }
+  if (h >= HOURS.MIDDAY_OPEN) {
+    return { to: "/midday", phase: "midday", icon: "◐" };
+  }
+  return { to: "/morning", phase: "morning", icon: "☀" };
+}
+
 export function pastMiddayDeadline(d = zonedNow()): boolean {
   return d.getHours() >= HOURS.MIDDAY_DEADLINE;
 }

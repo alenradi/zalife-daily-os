@@ -24,6 +24,7 @@ import {
   loadUserState,
   saveUserState,
 } from "../lib/userStorage";
+import { markCloudSynced, snapshotDataToPartial } from "../api/sync";
 
 export type ModalKind =
   | "levelup"
@@ -53,7 +54,7 @@ function uid(prefix = "id"): string {
 function emptyPillarState(): PillarState[] {
   return PILLARS.map((p) => ({
     pillar_id: p.id,
-    metrics: p.metrics.map((m) => ({ key: m.key, value: 0, note: "" })),
+    metrics: p.metrics.map((m) => ({ key: m.key, value: 0, note: "", jaz_sem: "" })),
     future_self_identity: "",
   }));
 }
@@ -85,7 +86,17 @@ function migratePillars(pillars: PillarState[] | undefined): PillarState[] {
           }
         : undefined);
     return prev
-      ? { ...b, ...prev, future_self_identity: prev.future_self_identity ?? "" }
+      ? {
+          ...b,
+          ...prev,
+          future_self_identity: prev.future_self_identity ?? "",
+          metrics: b.metrics.map((m) => {
+            const old = prev.metrics.find((x) => x.key === m.key);
+            return old
+              ? { ...m, ...old, jaz_sem: old.jaz_sem ?? "" }
+              : m;
+          }),
+        }
       : b;
   });
 }
@@ -119,6 +130,7 @@ function buildUserState(
     drift_handled_date: null as string | null,
     last_reminder_at: null as number | null,
     alerted_goals: {} as Record<string, string>,
+    alerted_reminders: {} as Record<string, string>,
     daily_logs: {} as Record<string, DailyLog>,
     weekly_resets: {} as Record<string, WeeklyReset>,
     next_week_unlocked: false,
@@ -151,6 +163,16 @@ function mergeLoadedState(
   merged.pillars = migratePillars(saved.pillars);
   merged.modals = [];
   merged.identity_editing = false;
+  merged.alerted_reminders = saved.alerted_reminders ?? {};
+  if (saved.chat?.length) {
+    const seen = new Set<string>();
+    merged.chat = saved.chat.filter((m) => {
+      const key = `${m.role}|${m.content.trim()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
   merged.goals = (saved.goals ?? []).map((g) => ({
     ...g,
     identity_built: g.identity_built ?? "",
@@ -201,6 +223,7 @@ export interface AppState {
   // ----- proactive reminder engine bookkeeping -----
   last_reminder_at: number | null; // epoch ms of the last reminder shown
   alerted_goals: Record<string, string>; // goalId -> ISO date last alerted
+  alerted_reminders: Record<string, string>; // reminderKey -> ISO date last alerted
 
   // ----- daily + weekly data -----
   daily_logs: Record<string, DailyLog>;
@@ -256,6 +279,7 @@ export interface AppState {
   // ----- reminder engine -----
   noteReminderShown: () => void;
   markGoalAlerted: (goalId: string) => void;
+  markReminderAlerted: (key: string) => void;
 
   createGoal: (g: Omit<SmartGoal, "id" | "completed" | "created_at">) => void;
   completeGoal: (id: string) => void;
@@ -264,7 +288,7 @@ export interface AppState {
   updatePillarMetric: (
     pillarId: string,
     key: string,
-    patch: { value?: number; note?: string }
+    patch: { value?: number; note?: string; jaz_sem?: string }
   ) => void;
 
   submitSundayReset: (
@@ -307,6 +331,9 @@ export interface AppState {
     profile: Partial<UserProfile>,
     opts?: { forceNew?: boolean }
   ) => void;
+
+  /** Replace local state from a newer Supabase snapshot (cross-device sync). */
+  hydrateFromCloud: (snap: import("../lib/supabase").UserSnapshot) => void;
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
@@ -334,6 +361,26 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       set({ ...get(), ...next, modals: [] });
       saveUserState(userId, get());
+    },
+
+    hydrateFromCloud: (snap) => {
+      const userId = get().profile.user_id;
+      if (!userId || snap.user_id !== userId) return;
+      const base = buildUserState(userId, {
+        display_name: snap.display_name,
+        email: snap.email,
+      });
+      const partial = snapshotDataToPartial(
+        snap.data
+      ) as Partial<AppState>;
+      const next = mergeLoadedState(base, partial, {
+        display_name: snap.display_name,
+        email: snap.email,
+        avatar_url: get().profile.avatar_url,
+      });
+      set({ ...get(), ...next, modals: [] });
+      saveUserState(userId, get());
+      markCloudSynced(userId, snap.updated_at);
     },
 
     pushModal: (kind, payload) =>
@@ -565,6 +612,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       markGoalAlerted: (goalId) =>
         set((s) => ({
           alerted_goals: { ...s.alerted_goals, [goalId]: todayISO() },
+        })),
+
+      markReminderAlerted: (key) =>
+        set((s) => ({
+          alerted_reminders: { ...s.alerted_reminders, [key]: todayISO() },
         })),
 
       createGoal: (g) =>

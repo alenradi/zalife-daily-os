@@ -22,6 +22,7 @@ export interface PlannerTask {
   created_at: string;
   // ----- identity-driven task structure -----
   pillar_id?: string; // which Life Pillar this action serves
+  pillar_metric_key?: string; // sub-area within the pillar (e.g. sleep, nutrition)
   identity_trait?: string; // the trait/identity the user is acting from
   task_description?: string; // the raw action description
   start_time?: string; // HH:mm local — day schedule slot
@@ -108,6 +109,8 @@ export interface PillarMetricValue {
   key: string;
   value: number; // 0-100 self rating
   note: string;
+  /** "Jaz sem..." identity for this sub-area — synced to Tasks when selected. */
+  jaz_sem: string;
 }
 
 export interface PillarState {

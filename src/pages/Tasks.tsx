@@ -28,18 +28,7 @@ import {
   sortKeyForTask,
 } from "../lib/taskTime";
 import type { PlannerTask } from "../types";
-
-function pillarIdentity(
-  pillars: ReturnType<typeof useAppStore.getState>["pillars"],
-  pillarId: string,
-  jazSem: string
-): string {
-  const fromMapa =
-    pillars.find((p) => p.pillar_id === pillarId)?.future_self_identity?.trim() ??
-    "";
-  if (fromMapa) return fromMapa;
-  return jazSem.trim();
-}
+import { getSubAreaIdentity } from "../lib/pillarIdentity";
 
 export function Tasks() {
   const planner = useAppStore((s) => s.planner_tasks);
@@ -162,9 +151,19 @@ export function Tasks() {
   };
 
   const buildTaskPayload = (values: TaskEditorValues) => {
-    const identity = pillarIdentity(pillars, values.pillar_id, jazSem);
+    const identity = getSubAreaIdentity(
+      pillars,
+      values.pillar_id,
+      values.pillar_metric_key,
+      jazSem
+    );
     const duration = durationFromRange(values.start_time, values.end_time);
-    const title = composeTaskTitle(values.pillar_id, identity, values.task_description);
+    const title = composeTaskTitle(
+      values.pillar_id,
+      values.pillar_metric_key,
+      identity,
+      values.task_description
+    );
     return {
       title,
       duration_minutes: duration,
@@ -173,6 +172,7 @@ export function Tasks() {
       priority: values.priority,
       recurring: values.recurring,
       pillar_id: values.pillar_id,
+      pillar_metric_key: values.pillar_metric_key,
       identity_trait: identity,
       task_description: values.task_description.trim(),
     };
@@ -245,6 +245,7 @@ export function Tasks() {
   const editorInitial: TaskEditorValues = editing
     ? {
         pillar_id: editing.pillar_id ?? "",
+        pillar_metric_key: editing.pillar_metric_key ?? "",
         task_description: editing.task_description ?? editing.title,
         start_time: editing.start_time ?? defaultSlot.start,
         end_time: editing.end_time ?? defaultSlot.end,
@@ -253,6 +254,7 @@ export function Tasks() {
       }
     : {
         pillar_id: "",
+        pillar_metric_key: "",
         task_description: "",
         start_time: defaultSlot.start,
         end_time: defaultSlot.end,

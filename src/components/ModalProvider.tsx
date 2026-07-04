@@ -208,6 +208,9 @@ export function ModalProvider() {
   if (current.kind === "deadline") {
     const variant = String(current.payload?.variant ?? "goal");
     const isTask = variant === "task";
+    const isPlanner = variant === "planner";
+    const isCycle = variant === "cycle";
+    const phase = String(current.payload?.phase ?? "morning");
     const title = String(current.payload?.title ?? "");
     const days = Number(current.payload?.days ?? 0);
     const tasks = (current.payload?.tasks as string[] | undefined) ?? [];
@@ -217,27 +220,58 @@ export function ModalProvider() {
         : days === 0
           ? sl.reminder.deadlineGoalToday
           : sl.reminder.deadlineGoalSoon(days);
+
+    const heading = isPlanner
+      ? sl.reminder.deadlinePlannerTitle
+      : isCycle
+        ? sl.reminder.cycleTitle(phase)
+        : isTask
+          ? sl.reminder.deadlineTaskTitle
+          : sl.reminder.deadlineGoalTitle;
+
+    const body = isPlanner
+      ? sl.reminder.deadlinePlannerMsg
+      : isCycle
+        ? sl.reminder.cycleMsg(phase)
+        : isTask
+          ? sl.reminder.deadlineTaskMsg
+          : goalMsg;
+
+    const gotoPath = isPlanner || isTask
+      ? "/tasks"
+      : isCycle
+        ? phase === "morning"
+          ? "/morning"
+          : phase === "midday"
+            ? "/midday"
+            : "/night"
+        : "/goals";
+
+    const gotoLabel = isPlanner || isTask
+      ? sl.reminder.gotoTasks
+      : isCycle
+        ? sl.reminder.gotoCycle(phase)
+        : sl.nav.goals;
+
     return (
       <div className="modal-overlay">
         <div className="modal modal-warning" onClick={(e) => e.stopPropagation()}>
           <span className="modal-emoji">⏳</span>
-          <h2>
-            {isTask
-              ? sl.reminder.deadlineTaskTitle
-              : sl.reminder.deadlineGoalTitle}
-          </h2>
-          {isTask ? (
+          <h2>{heading}</h2>
+          {(isTask || isPlanner) && tasks.length > 0 ? (
             <>
-              <p>{sl.reminder.deadlineTaskMsg}</p>
+              <p>{body}</p>
               <ul className="deadline-list">
-                {tasks.slice(0, 3).map((t, i) => (
+                {tasks.slice(0, 4).map((t, i) => (
                   <li key={i}>{t}</li>
                 ))}
               </ul>
             </>
+          ) : isCycle ? (
+            <p>{body}</p>
           ) : (
             <>
-              <p>{goalMsg}</p>
+              <p>{body}</p>
               {title && <p className="text-gold bold">„{title}"</p>}
             </>
           )}
@@ -249,10 +283,10 @@ export function ModalProvider() {
               className="btn btn-gold"
               onClick={() => {
                 close();
-                navigate(isTask ? "/tasks" : "/goals");
+                navigate(gotoPath);
               }}
             >
-              {isTask ? sl.reminder.gotoTasks : sl.nav.goals}
+              {gotoLabel}
             </button>
           </div>
         </div>

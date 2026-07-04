@@ -46,6 +46,14 @@ function buildSnapshot(): UserSnapshot | null {
       pillars: app.pillars,
       planner_tasks: app.planner_tasks,
       recurring_tasks: app.recurring_tasks,
+      recurring_done: app.recurring_done,
+      onboarding_completed: app.onboarding_completed,
+      alerted_goals: app.alerted_goals,
+      alerted_reminders: app.alerted_reminders,
+      drift_handled_date: app.drift_handled_date,
+      last_streak_date: app.last_streak_date,
+      next_week_unlocked: app.next_week_unlocked,
+      next_week_plan: app.next_week_plan,
       morning_submitted_today: !!todayLog?.morning?.submitted,
       midday_submitted_today: !!todayLog?.midday?.submitted,
       night_submitted_today: !!todayLog?.night?.submitted,
@@ -70,7 +78,94 @@ export async function pushUserSnapshot(): Promise<boolean> {
     console.error("[sync] push failed", error.message);
     return false;
   }
+  markCloudSynced(snap.user_id, snap.updated_at);
   return true;
+}
+
+export function cloudSyncKey(userId: string): string {
+  return `zalife-last-cloud-${userId}`;
+}
+
+export function markCloudSynced(userId: string, updatedAt: string): void {
+  try {
+    localStorage.setItem(cloudSyncKey(userId), updatedAt);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function lastCloudSyncAt(userId: string): string | null {
+  try {
+    return localStorage.getItem(cloudSyncKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch one user's cloud snapshot. */
+export async function fetchUserSnapshot(
+  userId: string
+): Promise<UserSnapshot | null> {
+  if (!isCloudConfigured()) return null;
+  const sb = getSupabase();
+  if (!sb) return null;
+
+  const { data, error } = await sb
+    .from("user_snapshots")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[sync] fetch user failed", error.message);
+    return null;
+  }
+  return (data as UserSnapshot) ?? null;
+}
+
+/** Map cloud snapshot payload back into app state fields. */
+export function snapshotDataToPartial(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    profile: data.profile,
+    moj_smisel_zivljenja: data.moj_smisel_zivljenja,
+    jaz_sem_status: data.jaz_sem_status,
+    identity_locked: data.identity_locked,
+    identity_change_log: data.identity_change_log,
+    xp_points: data.xp_points,
+    status: data.status,
+    drift_warnings: data.drift_warnings,
+    streak_days: data.streak_days,
+    last_streak_date: data.last_streak_date,
+    system_locked: data.system_locked,
+    drift_handled_date: data.drift_handled_date,
+    daily_logs: data.daily_logs,
+    weekly_resets: data.weekly_resets,
+    next_week_unlocked: data.next_week_unlocked,
+    next_week_plan: data.next_week_plan,
+    goals: data.goals,
+    pillars: data.pillars,
+    planner_tasks: data.planner_tasks,
+    recurring_tasks: data.recurring_tasks,
+    recurring_done: data.recurring_done,
+    onboarding_completed: data.onboarding_completed,
+    alerted_goals: data.alerted_goals,
+    alerted_reminders: data.alerted_reminders,
+    chat: data.chat,
+  };
+}
+
+/** True when cloud has newer data than this device last synced. */
+export function cloudIsNewerThanLocal(
+  userId: string,
+  cloudUpdatedAt: string,
+  hasLocalState: boolean
+): boolean {
+  if (!hasLocalState) return true;
+  const localAt = lastCloudSyncAt(userId);
+  if (!localAt) return true;
+  return new Date(cloudUpdatedAt).getTime() > new Date(localAt).getTime();
 }
 
 /** Fetch all user snapshots for the admin panel. */

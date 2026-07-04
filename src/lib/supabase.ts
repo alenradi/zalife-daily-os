@@ -15,6 +15,12 @@ export function getSupabase(): SupabaseClient | null {
   return client;
 }
 
+if (!isCloudConfigured() && typeof window !== "undefined" && !import.meta.env.DEV) {
+  console.warn(
+    "[zalife] Supabase ni nastavljen v produkcijskem buildu. Oblak sinhronizacija je onemogočena — dodaj VITE_SUPABASE_URL in VITE_SUPABASE_ANON_KEY v Vercel in ponovno deployaj."
+  );
+}
+
 /** Snapshot of a user's full app state stored in the cloud. */
 export interface UserSnapshot {
   user_id: string;
