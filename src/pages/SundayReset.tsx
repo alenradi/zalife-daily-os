@@ -11,6 +11,8 @@ export function SundayReset() {
   const reset = store.weekly_resets[weekId()];
   const submitReset = store.submitSundayReset;
   const setPlan = store.setNextWeekPlan;
+  const submitWeekPlan = store.submitWeekPlan;
+  const planApplied = store.next_week_plan_applied_week === weekId();
 
   const [lesson, setLesson] = useState("");
   const [drift, setDrift] = useState("");
@@ -18,8 +20,8 @@ export function SundayReset() {
   const [violation, setViolation] = useState(false);
   const [planText, setPlanText] = useState(store.next_week_plan);
   const [planViolation, setPlanViolation] = useState(false);
+  const [planNote, setPlanNote] = useState("");
 
-  // Aggregate last-7-day metrics for the summary.
   const last7 = lastNDates(7);
   const tasksCompleted = last7.reduce(
     (acc, d) =>
@@ -37,6 +39,8 @@ export function SundayReset() {
 
   const submitted = !!reset?.submitted;
   const canSubmit = lesson.trim().length > 3 && drift.trim().length > 3 && !violation;
+  const canSavePlan =
+    planText.trim().length > 3 && !planViolation && !planApplied;
   const locked = !isSundayResetOpen();
 
   if (locked) {
@@ -145,13 +149,34 @@ export function SundayReset() {
               onChange={(e) => {
                 setPlanText(e.target.value);
                 setPlan(e.target.value);
+                setPlanNote("");
               }}
             />
           </div>
           {planViolation && (
             <p className="small text-crimson">{sl.ampak.blocked}</p>
           )}
-          <p className="small text-muted">
+          {planNote && (
+            <p className="small text-teal" style={{ marginTop: 8 }}>
+              {planNote}
+            </p>
+          )}
+          {planApplied && (
+            <p className="small text-teal" style={{ marginTop: 8 }}>
+              ✓ {sl.sunday.planSubmitDone}
+            </p>
+          )}
+          <button
+            className="btn btn-primary btn-block mt"
+            disabled={!canSavePlan}
+            onClick={() => {
+              const n = submitWeekPlan();
+              if (n > 0) setPlanNote(sl.sunday.planSubmitDone);
+            }}
+          >
+            {sl.sunday.planSubmit}
+          </button>
+          <p className="small text-muted" style={{ marginTop: 14 }}>
             {sl.sunday.lessonLabel}: „{reset?.biggest_lesson}"
           </p>
         </Card>

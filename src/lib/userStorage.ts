@@ -38,6 +38,7 @@ export function pickPersistable(state: AppState): Record<string, unknown> {
     weekly_resets: state.weekly_resets,
     next_week_unlocked: state.next_week_unlocked,
     next_week_plan: state.next_week_plan,
+    next_week_plan_applied_week: state.next_week_plan_applied_week,
     goals: state.goals,
     pillars: state.pillars,
     planner_tasks: state.planner_tasks,

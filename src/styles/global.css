@@ -1996,6 +1996,37 @@ input, textarea, select { font-family: var(--font-body); }
   }
   .week-tab { flex: 0 0 auto; min-width: 48px; }
 
+  /* Week nav: buttons only on mobile — hide the slider */
+  .week-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .week-slider-row > .btn {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .week-slider-wrap {
+    flex: 0 0 auto;
+    background: transparent;
+    border: none;
+    padding: 0;
+    min-width: 88px;
+    text-align: center;
+  }
+  .week-slider-wrap .slider,
+  .week-slider {
+    display: none !important;
+  }
+  .week-slider-wrap .row.between {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
   /* Identity-driven task builder stacks vertically */
   .itb-template { flex-direction: column; align-items: stretch; }
   .itb-pillar,

@@ -16,7 +16,8 @@ import type {
   WeeklyReset,
 } from "../types";
 import { XP_VALUES, levelFromXp, type XpEvent } from "../lib/xp";
-import { todayISO, weekId, isoDaysAgo, lastNDates } from "../lib/date";
+import { todayISO, weekId, isoDaysAgo, lastNDates, nextWeekDates } from "../lib/date";
+import { defaultSlotForDay } from "../lib/taskTime";
 import { PILLARS } from "../data/pillars";
 import { quoteForIndex, QUOTES } from "../data/quotes";
 import {
@@ -135,6 +136,7 @@ function buildUserState(
     weekly_resets: {} as Record<string, WeeklyReset>,
     next_week_unlocked: false,
     next_week_plan: "",
+    next_week_plan_applied_week: null as string | null,
     goals: [] as SmartGoal[],
     pillars: emptyPillarState(),
     planner_tasks: {} as Record<string, PlannerTask[]>,
@@ -164,6 +166,7 @@ function mergeLoadedState(
   merged.modals = [];
   merged.identity_editing = false;
   merged.alerted_reminders = saved.alerted_reminders ?? {};
+  merged.next_week_plan_applied_week = saved.next_week_plan_applied_week ?? null;
   if (saved.chat?.length) {
     const seen = new Set<string>();
     merged.chat = saved.chat.filter((m) => {
@@ -230,6 +233,7 @@ export interface AppState {
   weekly_resets: Record<string, WeeklyReset>;
   next_week_unlocked: boolean;
   next_week_plan: string;
+  next_week_plan_applied_week: string | null;
 
   // ----- growth -----
   goals: SmartGoal[];
@@ -298,6 +302,7 @@ export interface AppState {
     >
   ) => void;
   setNextWeekPlan: (plan: string) => void;
+  submitWeekPlan: () => number;
 
   addChatMessage: (m: ChatMessage) => void;
   updateProfile: (patch: Partial<UserProfile>) => void;
@@ -696,6 +701,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         set((s) => ({
           weekly_resets: { ...s.weekly_resets, [wid]: reset },
           next_week_unlocked: true,
+          next_week_plan_applied_week: null,
         }));
         get().addXp("SUNDAY_RESET");
         get().pushModal("celebrate", {
@@ -706,6 +712,42 @@ export const useAppStore = create<AppState>()((set, get) => {
       },
 
       setNextWeekPlan: (plan) => set({ next_week_plan: plan }),
+
+      submitWeekPlan: () => {
+        const plan = get().next_week_plan.trim();
+        if (!plan) return 0;
+        const wid = weekId();
+        if (get().next_week_plan_applied_week === wid) return 0;
+
+        const lines = plan
+          .split(/\n+/)
+          .map((l) => l.replace(/^[-•*]\s*/, "").trim())
+          .filter((l) => l.length > 0);
+        if (lines.length === 0) return 0;
+
+        const days = nextWeekDates();
+        let added = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const dateISO = days[i % days.length].iso;
+          const existing = get().planner_tasks[dateISO] ?? [];
+          const slot = defaultSlotForDay(
+            existing.map((t) => t.start_time).filter(Boolean) as string[]
+          );
+          const line = lines[i];
+          get().addPlannerTask(dateISO, {
+            title: line,
+            task_description: line,
+            duration_minutes: 60,
+            start_time: slot.start,
+            end_time: slot.end,
+            priority: false,
+            recurring: false,
+          });
+          added++;
+        }
+        set({ next_week_plan_applied_week: wid });
+        return added;
+      },
 
       addChatMessage: (m) => set((s) => ({ chat: [...s.chat, m] })),
 

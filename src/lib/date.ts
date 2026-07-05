@@ -149,6 +149,15 @@ export function formatClock(d = zonedNow()): string {
     .join(":");
 }
 
+/** Monday-first ISO dates for the calendar week after the current one. */
+export function nextWeekDates(from = zonedNow()): { iso: string; dayIndex: number }[] {
+  const day = from.getDay();
+  const daysUntilNextMonday = day === 0 ? 1 : 8 - day;
+  const monday = new Date(from);
+  monday.setDate(from.getDate() + daysUntilNextMonday);
+  return weekDates(monday);
+}
+
 /** Monday-first list of {iso, dayIndex} for the week containing `ref`. */
 export function weekDates(ref = zonedNow()): { iso: string; dayIndex: number }[] {
   const monday = new Date(ref);

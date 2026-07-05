@@ -310,6 +310,8 @@ export const sl = {
     planningTitle: "Načrtovanje naslednjega tedna",
     planningSub: "Odklenjeno. Zariši naloge za teden, ki prihaja.",
     planPlaceholder: "Naslednji teden bom ...",
+    planSubmit: "Shrani načrt v naloge",
+    planSubmitDone: "Načrt je shranjen v naloge za prihajajoči teden.",
     planningLocked: "Zaključi nedeljski reset za odklep načrtovanja.",
   },
 
@@ -341,7 +343,7 @@ export const sl = {
     subtitle: "Tvoj ZaLife vodja. Brez mehčanja. Drži te odgovornega.",
     comingSoonBadge: "V razvoju",
     comingSoonBody:
-      "AI mentor je trenutno v razvoju in bo kmalu na voljo. Do takrat uporabljaj jutranji plan, naloge in opomnike — ostani v FLOW.",
+      "Kakav AI bre? Pomisli malo! Ajde back to work. ...comming soon.",
     placeholder: "Vprašaj svojega mentorja ...",
     send: "Pošlji",
     thinking: "Mentor razmišlja ...",

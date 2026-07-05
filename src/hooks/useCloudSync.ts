@@ -15,19 +15,22 @@ export function useCloudSync() {
   useEffect(() => {
     if (!userId || !isCloudConfigured()) return;
 
-    // Push immediately on login.
-    void pushUserSnapshot();
+    // Push after session is ready (activateUser + optional cloud pull).
+    const pushTimer = window.setTimeout(() => {
+      void pushUserSnapshot();
+    }, 1500);
 
     const unsub = useAppStore.subscribe(() => {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         void pushUserSnapshot();
-      }, 20_000);
+      }, 8_000);
     });
 
     return () => {
       unsub();
       if (timer.current) clearTimeout(timer.current);
+      window.clearTimeout(pushTimer);
     };
   }, [userId]);
 }

@@ -27,17 +27,13 @@ interface TaskEditorModalProps {
 }
 
 function composeTitle(
-  pillarId: string,
-  metricKey: string,
+  _pillarId: string,
+  _metricKey: string,
   identity: string,
   desc: string
 ): string {
-  const pillar = PILLARS.find((p) => p.id === pillarId);
-  if (!pillar) return desc.trim();
-  const metric = pillar.metrics.find((m) => m.key === metricKey);
-  const area = metric ? `${pillar.title} — ${metric.label}` : pillar.title;
   const id = identity.trim() || "—";
-  return `${sl.tasks.prefixSemNa} ${area} — ${id} — ${sl.tasks.prefixZato} ${desc.trim()}`;
+  return `${id} — ${sl.tasks.prefixZato} ${desc.trim()}`;
 }
 
 export function TaskEditorModal({

@@ -4,6 +4,7 @@ import { useAppStore } from "../store/useAppStore";
 import {
   cloudIsNewerThanLocal,
   fetchUserSnapshot,
+  pushUserSnapshot,
 } from "../api/sync";
 import { isCloudConfigured } from "../lib/supabase";
 import { hasUserState, saveUserState } from "../lib/userStorage";
@@ -38,22 +39,27 @@ export function useUserSession() {
       { forceNew }
     );
 
-    if (forceNew || !isCloudConfigured()) return;
-
-    void (async () => {
-      const cloud = await fetchUserSnapshot(userId);
-      if (!cloud) return;
-      if (
-        !cloudIsNewerThanLocal(
-          userId,
-          cloud.updated_at,
-          forceNew ? false : hadLocalBefore
-        )
-      ) {
-        return;
-      }
-      useAppStore.getState().hydrateFromCloud(cloud);
-    })();
+    if (!forceNew && isCloudConfigured()) {
+      void (async () => {
+        const cloud = await fetchUserSnapshot(userId);
+        if (!cloud) {
+          void pushUserSnapshot();
+          return;
+        }
+        if (
+          cloudIsNewerThanLocal(
+            userId,
+            cloud.updated_at,
+            forceNew ? false : hadLocalBefore
+          )
+        ) {
+          useAppStore.getState().hydrateFromCloud(cloud);
+        }
+        void pushUserSnapshot();
+      })();
+    } else if (isCloudConfigured()) {
+      void pushUserSnapshot();
+    }
   }, [userId]);
 
   useEffect(() => {
