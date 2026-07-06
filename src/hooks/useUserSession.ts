@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
-import { useAuthStore } from "../store/useAuthStore";
+import { normalizeAuthSession, useAuthStore } from "../store/useAuthStore";
 import { useAppStore } from "../store/useAppStore";
 import {
   cloudIsNewerThanLocal,
   resolveCloudSnapshot,
   pushUserSnapshot,
+  fetchUserSnapshotsByEmail,
+  dedupeSnapshotsByEmail,
 } from "../api/sync";
 import { isCloudConfigured } from "../lib/supabase";
-import { hasUserState, saveUserState } from "../lib/userStorage";
+import { hasUserState, saveUserState, migrateUserStorage } from "../lib/userStorage";
 
 const FORCE_NEW_KEY = "zalife-force-new";
 
@@ -21,48 +23,87 @@ export function useUserSession() {
 
   useEffect(() => {
     if (!userId) return;
-    const account = useAuthStore.getState().currentAccount();
-    if (!account) return;
 
-    const forceNew = sessionStorage.getItem(FORCE_NEW_KEY) === userId;
-    if (forceNew) sessionStorage.removeItem(FORCE_NEW_KEY);
+    const boot = async () => {
+      normalizeAuthSession();
+      let uid = useAuthStore.getState().current_user_id;
+      if (!uid) return;
+      let account = useAuthStore.getState().currentAccount();
+      if (!account) return;
 
-    const hadLocalBefore = hasUserState(userId);
+      // Legacy Google session without sub — adopt stable g_ row from cloud if present.
+      if (
+        account.provider === "google" &&
+        account.id.startsWith("u_") &&
+        !account.google_sub &&
+        isCloudConfigured()
+      ) {
+        const snaps = await fetchUserSnapshotsByEmail(account.email);
+        const stable = dedupeSnapshotsByEmail(snaps).find((s) =>
+          s.user_id.startsWith("g_")
+        );
+        if (stable && stable.user_id !== account.id) {
+          migrateUserStorage(account.id, stable.user_id);
+          useAuthStore.setState((s) => ({
+            accounts: s.accounts
+              .filter(
+                (a) =>
+                  !(
+                    a.email === account!.email &&
+                    a.provider === "google" &&
+                    a.id !== stable.user_id
+                  )
+              )
+              .map((a) =>
+                a.id === account!.id ? { ...a, id: stable.user_id } : a
+              ),
+            current_user_id: stable.user_id,
+          }));
+          uid = stable.user_id;
+          account = useAuthStore.getState().currentAccount()!;
+        }
+      }
 
-    useAppStore.getState().activateUser(
-      userId,
-      {
-        display_name: account.name,
-        email: account.email,
-        avatar_url: account.picture ?? "",
-      },
-      { forceNew }
-    );
+      const forceNew = sessionStorage.getItem(FORCE_NEW_KEY) === uid;
+      if (forceNew) sessionStorage.removeItem(FORCE_NEW_KEY);
 
-    if (!forceNew && isCloudConfigured()) {
-      void (async () => {
-        const cloud = await resolveCloudSnapshot(userId, account.email);
+      const hadLocalBefore = hasUserState(uid);
+
+      useAppStore.getState().activateUser(
+        uid,
+        {
+          display_name: account.name,
+          email: account.email,
+          avatar_url: account.picture ?? "",
+        },
+        { forceNew }
+      );
+
+      if (!forceNew && isCloudConfigured()) {
+        const cloud = await resolveCloudSnapshot(uid, account.email);
         if (!cloud) {
           void pushUserSnapshot();
           return;
         }
         if (
           cloudIsNewerThanLocal(
-            userId,
+            uid,
             cloud.updated_at,
             forceNew ? false : hadLocalBefore
           ) ||
           (Number(cloud.data?.xp_points ?? 0) >
             useAppStore.getState().xp_points &&
-            cloud.user_id !== userId)
+            cloud.user_id !== uid)
         ) {
           useAppStore.getState().hydrateFromCloud(cloud);
         }
         void pushUserSnapshot();
-      })();
-    } else if (isCloudConfigured()) {
-      void pushUserSnapshot();
-    }
+      } else if (isCloudConfigured()) {
+        void pushUserSnapshot();
+      }
+    };
+
+    void boot();
   }, [userId]);
 
   useEffect(() => {

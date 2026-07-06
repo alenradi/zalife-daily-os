@@ -19,6 +19,8 @@ export interface Account {
   provider: AuthProvider;
   password_hash?: string;
   picture?: string;
+  /** Google account subject — used for stable cross-device id. */
+  google_sub?: string;
 }
 
 interface AuthResult {
@@ -59,6 +61,57 @@ export function stableGoogleId(sub: string): string {
 /** Stable id for email/password accounts. */
 export function stableEmailId(email: string): string {
   return `e_${hash(email.trim().toLowerCase())}`;
+}
+
+/** Resolve the canonical user id (migrates legacy random ids). */
+export function canonicalUserId(account: Account): string {
+  if (account.provider === "google") {
+    if (account.google_sub) return stableGoogleId(account.google_sub);
+    const stable = useAuthStore
+      .getState()
+      .accounts.find(
+        (a) =>
+          a.provider === "google" &&
+          a.email === account.email &&
+          a.id.startsWith("g_")
+      );
+    if (stable) return stable.id;
+  }
+  if (account.provider === "email") return stableEmailId(account.email);
+  return account.id;
+}
+
+/**
+ * Normalize persisted session to stable ids so cloud sync does not fork rows.
+ * Call on every app load before activating user state.
+ */
+export function normalizeAuthSession(): string | null {
+  const state = useAuthStore.getState();
+  const account = state.currentAccount();
+  if (!account) return null;
+
+  const canonical = canonicalUserId(account);
+  if (canonical === account.id) return canonical;
+
+  migrateUserStorage(account.id, canonical);
+
+  const accounts = state.accounts
+    .filter(
+      (a) =>
+        !(
+          a.email === account.email &&
+          a.provider === account.provider &&
+          a.id !== canonical
+        )
+    )
+    .map((a) =>
+      a.id === account.id
+        ? { ...a, id: canonical, google_sub: account.google_sub ?? a.google_sub }
+        : a
+    );
+
+  useAuthStore.setState({ accounts, current_user_id: canonical });
+  return canonical;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,7 +155,18 @@ export const useAuthStore = create<AuthState>()(
         if (!account) return { ok: false, error: "Račun ne obstaja." };
         if (account.password_hash !== hash(password))
           return { ok: false, error: "Napačno geslo." };
-        set({ current_user_id: account.id });
+        const canonical = stableEmailId(cleanEmail);
+        if (account.id !== canonical) {
+          migrateUserStorage(account.id, canonical);
+          set((s) => ({
+            accounts: s.accounts.map((a) =>
+              a.id === account!.id ? { ...a, id: canonical } : a
+            ),
+            current_user_id: canonical,
+          }));
+        } else {
+          set({ current_user_id: account.id });
+        }
         return { ok: true };
       },
 
@@ -125,6 +189,7 @@ export const useAuthStore = create<AuthState>()(
             account = {
               ...legacy,
               id: stableId,
+              google_sub: user.sub,
               name: user.name || legacy.name,
               picture: user.picture || legacy.picture,
             };
@@ -144,11 +209,13 @@ export const useAuthStore = create<AuthState>()(
             email,
             provider: "google",
             picture: user.picture,
+            google_sub: user.sub,
           };
           set((s) => ({ accounts: [...s.accounts, account!] }));
         } else if (!created) {
           const updated = {
             ...account,
+            google_sub: user.sub,
             name: user.name || account.name,
             picture: user.picture || account.picture,
           };
@@ -179,6 +246,6 @@ export const useAuthStore = create<AuthState>()(
         return !!t && t.expires_at > Date.now() + 30_000;
       },
     }),
-    { name: "zalife-auth-v1", version: 1 }
+    { name: "zalife-auth-v1", version: 2 }
   )
 );

@@ -5,7 +5,7 @@
 
 import { getSupabase, isCloudConfigured, type UserSnapshot } from "../lib/supabase";
 import { useAppStore } from "../store/useAppStore";
-import { useAuthStore } from "../store/useAuthStore";
+import { useAuthStore, canonicalUserId } from "../store/useAuthStore";
 import type { StudentRecord } from "../types";
 import { levelFromXp } from "../lib/xp";
 import { todayISO, lastNDates } from "../lib/date";
@@ -21,11 +21,12 @@ function buildSnapshot(): UserSnapshot | null {
   const app = useAppStore.getState();
   if (!account) return null;
 
+  const userId = canonicalUserId(account);
   const today = todayISO();
   const todayLog = app.daily_logs[today];
 
   return {
-    user_id: account.id,
+    user_id: userId,
     email: account.email,
     display_name: app.profile.display_name || account.name,
     provider: account.provider,
@@ -63,6 +64,34 @@ function buildSnapshot(): UserSnapshot | null {
   };
 }
 
+const SYSTEM_USER_IDS = new Set(["__zalife_public_chat__", "__test_chat__"]);
+
+/** Remove legacy duplicate rows for the same email after upsert. */
+async function pruneDuplicateSnapshots(
+  email: string,
+  keepUserId: string
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const clean = email.trim().toLowerCase();
+  const { data, error } = await sb
+    .from("user_snapshots")
+    .select("user_id")
+    .eq("email", clean);
+  if (error || !data?.length) return;
+
+  const toDelete = data
+    .map((row) => row.user_id as string)
+    .filter((id) => id !== keepUserId && !SYSTEM_USER_IDS.has(id));
+  if (!toDelete.length) return;
+
+  const { error: delErr } = await sb
+    .from("user_snapshots")
+    .delete()
+    .in("user_id", toDelete);
+  if (delErr) console.error("[sync] prune duplicates failed", delErr.message);
+}
+
 /** Upsert the current user's snapshot to Supabase. */
 export async function pushUserSnapshot(): Promise<boolean> {
   if (!isCloudConfigured()) return false;
@@ -80,6 +109,7 @@ export async function pushUserSnapshot(): Promise<boolean> {
     return false;
   }
   markCloudSynced(snap.user_id, snap.updated_at);
+  await pruneDuplicateSnapshots(snap.email, snap.user_id);
   return true;
 }
 
@@ -103,7 +133,11 @@ export function lastCloudSyncAt(userId: string): string | null {
   }
 }
 
-const SYSTEM_USER_IDS = new Set(["__zalife_public_chat__", "__test_chat__"]);
+function idStabilityRank(userId: string): number {
+  if (userId.startsWith("g_")) return 3;
+  if (userId.startsWith("e_")) return 2;
+  return 1;
+}
 
 function snapshotScore(snap: UserSnapshot): number {
   const xp = Number(snap.data?.xp_points ?? 0);
@@ -121,7 +155,18 @@ export function dedupeSnapshotsByEmail(
     const email = snap.email.trim().toLowerCase();
     if (!email || email === "community@zalife.app") continue;
     const prev = byEmail.get(email);
-    if (!prev || snapshotScore(snap) > snapshotScore(prev)) {
+    if (!prev) {
+      byEmail.set(email, snap);
+      continue;
+    }
+    const scoreSnap = snapshotScore(snap);
+    const scorePrev = snapshotScore(prev);
+    if (scoreSnap > scorePrev) {
+      byEmail.set(email, snap);
+    } else if (
+      scoreSnap === scorePrev &&
+      idStabilityRank(snap.user_id) > idStabilityRank(prev.user_id)
+    ) {
       byEmail.set(email, snap);
     }
   }
