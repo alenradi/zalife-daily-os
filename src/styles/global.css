@@ -172,18 +172,8 @@ input, textarea, select { font-family: var(--font-body); }
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(239, 167, 59, 0.25));
-  mix-blend-mode: screen;
+  filter: drop-shadow(0 2px 8px rgba(239, 167, 59, 0.2));
   background: transparent;
-}
-.logo-slot img,
-.logo-img {
-  /* JPEG logo ships with black matte — screen blend hides it on dark UI */
-}
-.sidebar .logo-slot,
-.onboarding-logo-wrap {
-  background: #0c0e12;
-  isolation: isolate;
 }
 
 .brand-text b { color: var(--white); font-family: var(--font-display); font-size: 15px; display: block; }
@@ -2249,7 +2239,7 @@ input, textarea, select { font-family: var(--font-body); }
   position: fixed;
   right: 16px;
   bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  z-index: 90;
+  z-index: 110;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2262,13 +2252,17 @@ input, textarea, select { font-family: var(--font-body); }
   font-size: 13px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.agent-fab-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
 }
 .agent-fab-logo {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #0c0e12;
-  isolation: isolate;
 }
 @media (min-width: 1221px) {
   .agent-fab { display: none !important; }
@@ -2276,11 +2270,14 @@ input, textarea, select { font-family: var(--font-body); }
 .agent-drawer-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 95;
-  background: rgba(0, 0, 0, 0.55);
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  animation: fadeIn 0.2s ease;
 }
 @media (min-width: 1221px) {
   .agent-drawer-backdrop { display: none !important; }
@@ -2288,14 +2285,18 @@ input, textarea, select { font-family: var(--font-body); }
 .agent-drawer {
   width: 100%;
   max-width: 480px;
-  max-height: 78vh;
+  max-height: min(78vh, calc(100dvh - 24px));
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 @media (min-width: 640px) {
   .agent-drawer-backdrop { align-items: center; }
@@ -2311,8 +2312,13 @@ input, textarea, select { font-family: var(--font-body); }
   gap: 8px;
 }
 .agent-drawer-head h3 { margin: 0; font-size: 16px; }
-.mentor-panel-compact .mentor-chat-wrap { min-height: 280px; }
-.mentor-panel-compact .chat-feed { max-height: 42vh; }
+.mentor-panel-compact.mentor-panel-soon {
+  flex: 1;
+  min-height: 0;
+}
+.mentor-panel-compact .mentor-soon-body {
+  padding: 12px 8px 8px;
+}
 
 .mentor-panel-soon .mentor-soon-body {
   padding: 20px 16px 24px;
