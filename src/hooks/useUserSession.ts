@@ -3,7 +3,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useAppStore } from "../store/useAppStore";
 import {
   cloudIsNewerThanLocal,
-  fetchUserSnapshot,
+  resolveCloudSnapshot,
   pushUserSnapshot,
 } from "../api/sync";
 import { isCloudConfigured } from "../lib/supabase";
@@ -41,7 +41,7 @@ export function useUserSession() {
 
     if (!forceNew && isCloudConfigured()) {
       void (async () => {
-        const cloud = await fetchUserSnapshot(userId);
+        const cloud = await resolveCloudSnapshot(userId, account.email);
         if (!cloud) {
           void pushUserSnapshot();
           return;
@@ -51,7 +51,10 @@ export function useUserSession() {
             userId,
             cloud.updated_at,
             forceNew ? false : hadLocalBefore
-          )
+          ) ||
+          (Number(cloud.data?.xp_points ?? 0) >
+            useAppStore.getState().xp_points &&
+            cloud.user_id !== userId)
         ) {
           useAppStore.getState().hydrateFromCloud(cloud);
         }

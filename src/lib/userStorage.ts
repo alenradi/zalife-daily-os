@@ -88,3 +88,26 @@ export function loadLegacySharedState(
   }
   return null;
 }
+
+/** Move per-user local state when account id is normalized (e.g. Google sub). */
+export function migrateUserStorage(oldId: string, newId: string): void {
+  if (!oldId || !newId || oldId === newId) return;
+  try {
+    const oldKey = userStorageKey(oldId);
+    const newKey = userStorageKey(newId);
+    const raw = localStorage.getItem(oldKey);
+    if (raw && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, raw);
+    }
+    localStorage.removeItem(oldKey);
+
+    const cloudKey = `zalife-last-cloud-${oldId}`;
+    const cloudVal = localStorage.getItem(cloudKey);
+    if (cloudVal && !localStorage.getItem(`zalife-last-cloud-${newId}`)) {
+      localStorage.setItem(`zalife-last-cloud-${newId}`, cloudVal);
+    }
+    localStorage.removeItem(cloudKey);
+  } catch (e) {
+    console.error("[storage] migrate failed", e);
+  }
+}

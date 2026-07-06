@@ -82,6 +82,11 @@ export function Leaderboard() {
   const [sortBy, setSortBy] = useState<"weekly_xp" | "streak_days">("weekly_xp");
 
   const sorted = [...all].sort((a, b) => b[sortBy] - a[sortBy]);
+  const isMe = (s: StudentRecord) =>
+    s.user_id === me.user_id ||
+    (!!me.email &&
+      !!s.email &&
+      s.email.trim().toLowerCase() === me.email.trim().toLowerCase());
   const awardLeader = [...all].sort(
     (a, b) => b.weekly_xp - a.weekly_xp || b.streak_days - a.streak_days
   )[0] ?? me;
@@ -128,7 +133,7 @@ export function Leaderboard() {
             <div
               key={s.user_id}
               className={`lb-row ${i === 0 ? "top1" : ""} ${
-                s.user_id === me.user_id ? "me" : ""
+                isMe(s) ? "me" : ""
               }`}
             >
               <div className="rank">{i === 0 ? "★" : i + 1}</div>
@@ -141,7 +146,7 @@ export function Leaderboard() {
                 <div>
                   <div className="bold" style={{ color: "var(--white)" }}>
                     {s.display_name}
-                    {s.user_id === me.user_id && (
+                    {isMe(s) && (
                       <span className="text-teal small"> (ti)</span>
                     )}
                   </div>

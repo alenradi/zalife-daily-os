@@ -103,6 +103,31 @@ export function lastCloudSyncAt(userId: string): string | null {
   }
 }
 
+const SYSTEM_USER_IDS = new Set(["__zalife_public_chat__", "__test_chat__"]);
+
+function snapshotScore(snap: UserSnapshot): number {
+  const xp = Number(snap.data?.xp_points ?? 0);
+  const ts = new Date(snap.updated_at).getTime();
+  return xp * 1e12 + ts;
+}
+
+/** One row per email — keeps highest XP, then newest update. */
+export function dedupeSnapshotsByEmail(
+  snaps: UserSnapshot[]
+): UserSnapshot[] {
+  const byEmail = new Map<string, UserSnapshot>();
+  for (const snap of snaps) {
+    if (SYSTEM_USER_IDS.has(snap.user_id)) continue;
+    const email = snap.email.trim().toLowerCase();
+    if (!email || email === "community@zalife.app") continue;
+    const prev = byEmail.get(email);
+    if (!prev || snapshotScore(snap) > snapshotScore(prev)) {
+      byEmail.set(email, snap);
+    }
+  }
+  return [...byEmail.values()];
+}
+
 /** Fetch one user's cloud snapshot. */
 export async function fetchUserSnapshot(
   userId: string
@@ -122,6 +147,42 @@ export async function fetchUserSnapshot(
     return null;
   }
   return (data as UserSnapshot) ?? null;
+}
+
+/** Legacy rows may exist under random ids — resolve by email. */
+export async function fetchUserSnapshotsByEmail(
+  email: string
+): Promise<UserSnapshot[]> {
+  if (!isCloudConfigured()) return [];
+  const sb = getSupabase();
+  if (!sb) return [];
+  const clean = email.trim().toLowerCase();
+  if (!clean) return [];
+
+  const { data, error } = await sb
+    .from("user_snapshots")
+    .select("*")
+    .eq("email", clean)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("[sync] fetch by email failed", error.message);
+    return [];
+  }
+  return (data ?? []) as UserSnapshot[];
+}
+
+/** Best cloud row for this account (stable id first, then deduped email legacy). */
+export async function resolveCloudSnapshot(
+  userId: string,
+  email: string
+): Promise<UserSnapshot | null> {
+  const direct = await fetchUserSnapshot(userId);
+  if (direct) return direct;
+  const legacy = dedupeSnapshotsByEmail(
+    await fetchUserSnapshotsByEmail(email)
+  );
+  return legacy[0] ?? null;
 }
 
 /** Map cloud snapshot payload back into app state fields. */
@@ -185,7 +246,7 @@ export async function fetchAllUserSnapshots(): Promise<UserSnapshot[]> {
     console.error("[sync] fetch failed", error.message);
     return [];
   }
-  return (data ?? []) as UserSnapshot[];
+  return dedupeSnapshotsByEmail((data ?? []) as UserSnapshot[]);
 }
 
 /** Convert a cloud snapshot into a StudentRecord for admin display. */

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { GoogleToken } from "../lib/google";
+import { migrateUserStorage } from "../lib/userStorage";
 
 /**
  * Authentication store. Frontend-only:
@@ -50,8 +51,14 @@ function hash(input: string): string {
   return (h >>> 0).toString(36);
 }
 
-function uid(p = "u"): string {
-  return `${p}_${Math.random().toString(36).slice(2, 9)}`;
+// uid() removed — use stableGoogleId / stableEmailId for cross-device identity.
+export function stableGoogleId(sub: string): string {
+  return `g_${sub}`;
+}
+
+/** Stable id for email/password accounts. */
+export function stableEmailId(email: string): string {
+  return `e_${hash(email.trim().toLowerCase())}`;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
           return { ok: false, error: "Ta e-pošta je že registrirana." };
 
         const account: Account = {
-          id: uid(),
+          id: stableEmailId(cleanEmail),
           name: name.trim(),
           email: cleanEmail,
           provider: "email",
@@ -101,29 +108,58 @@ export const useAuthStore = create<AuthState>()(
 
       loginWithGoogle: (user, token) => {
         const email = user.email.trim().toLowerCase();
-        let account = get().accounts.find((a) => a.email === email);
+        const stableId = stableGoogleId(user.sub);
         let created = false;
+
+        let account =
+          get().accounts.find((a) => a.id === stableId) ?? null;
+
+        if (!account) {
+          const legacy = get().accounts.find(
+            (a) => a.email === email && a.provider === "google"
+          );
+          if (legacy) {
+            if (legacy.id !== stableId) {
+              migrateUserStorage(legacy.id, stableId);
+            }
+            account = {
+              ...legacy,
+              id: stableId,
+              name: user.name || legacy.name,
+              picture: user.picture || legacy.picture,
+            };
+            set((s) => ({
+              accounts: s.accounts.map((a) =>
+                a.id === legacy.id ? account! : a
+              ),
+            }));
+          }
+        }
+
         if (!account) {
           created = true;
           account = {
-            id: uid(),
+            id: stableId,
             name: user.name || email.split("@")[0],
             email,
             provider: "google",
             picture: user.picture,
           };
           set((s) => ({ accounts: [...s.accounts, account!] }));
-        } else {
+        } else if (!created) {
           const updated = {
             ...account,
             name: user.name || account.name,
-            picture: user.picture,
+            picture: user.picture || account.picture,
           };
           set((s) => ({
-            accounts: s.accounts.map((a) => (a.id === updated.id ? updated : a)),
+            accounts: s.accounts.map((a) =>
+              a.id === stableId ? updated : a
+            ),
           }));
           account = updated;
         }
+
         set({ current_user_id: account.id, google_token: token });
         return { account, created };
       },

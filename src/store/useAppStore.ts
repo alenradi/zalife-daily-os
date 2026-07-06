@@ -370,14 +370,12 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     hydrateFromCloud: (snap) => {
       const userId = get().profile.user_id;
-      if (!userId || snap.user_id !== userId) return;
+      if (!userId) return;
       const base = buildUserState(userId, {
         display_name: snap.display_name,
         email: snap.email,
       });
-      const partial = snapshotDataToPartial(
-        snap.data
-      ) as Partial<AppState>;
+      const partial = snapshotDataToPartial(snap.data) as Partial<AppState>;
       const next = mergeLoadedState(base, partial, {
         display_name: snap.display_name,
         email: snap.email,

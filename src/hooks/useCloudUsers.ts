@@ -25,10 +25,16 @@ export function useCloudUsers() {
   }, [me.user_id]);
 
   const all = useMemo(() => {
-    const byId = new Map<string, StudentRecord>();
-    for (const u of cloudUsers) byId.set(u.user_id, u);
-    byId.set(me.user_id, { ...byId.get(me.user_id), ...me });
-    return [...byId.values()];
+    const byEmail = new Map<string, StudentRecord>();
+    for (const u of cloudUsers) {
+      const key = u.email?.trim().toLowerCase();
+      if (key) byEmail.set(key, u);
+    }
+    const meKey = me.email?.trim().toLowerCase();
+    if (meKey) {
+      byEmail.set(meKey, { ...byEmail.get(meKey), ...me, user_id: me.user_id });
+    }
+    return [...byEmail.values()];
   }, [cloudUsers, me]);
 
   return { all, loading, me };
