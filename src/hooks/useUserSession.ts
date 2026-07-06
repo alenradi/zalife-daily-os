@@ -79,26 +79,23 @@ export function useUserSession() {
         { forceNew }
       );
 
-      if (!forceNew && isCloudConfigured()) {
+      if (isCloudConfigured()) {
         const cloud = await resolveCloudSnapshot(uid, account.email);
         if (!cloud) {
           void pushUserSnapshot();
           return;
         }
-        if (
-          cloudIsNewerThanLocal(
-            uid,
-            cloud.updated_at,
-            forceNew ? false : hadLocalBefore
-          ) ||
-          (Number(cloud.data?.xp_points ?? 0) >
-            useAppStore.getState().xp_points &&
-            cloud.user_id !== uid)
-        ) {
+        const app = useAppStore.getState();
+        const shouldHydrate =
+          forceNew ||
+          cloudIsNewerThanLocal(uid, cloud.updated_at, hadLocalBefore) ||
+          Number(cloud.data?.xp_points ?? 0) > app.xp_points ||
+          (Boolean(cloud.data?.onboarding_completed) &&
+            !app.onboarding_completed);
+
+        if (shouldHydrate) {
           useAppStore.getState().hydrateFromCloud(cloud);
         }
-        void pushUserSnapshot();
-      } else if (isCloudConfigured()) {
         void pushUserSnapshot();
       }
     };

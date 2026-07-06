@@ -33,7 +33,7 @@ function composeTitle(
   desc: string
 ): string {
   const id = identity.trim() || "—";
-  return `${id} — ${sl.tasks.prefixZato} ${desc.trim()}`;
+  return `${id} — ${desc.trim()}`;
 }
 
 export function TaskEditorModal({

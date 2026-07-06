@@ -48,8 +48,7 @@ export function Login() {
     try {
       const token = await requestGoogleAccess();
       const user = await fetchGoogleUser(token.access_token);
-      const { account, created } = loginWithGoogle(user, token);
-      if (created) markFreshUserSession(account.id);
+      const { account } = loginWithGoogle(user, token);
       connectCalendar();
       updateProfile({ calendar_email: account.email });
       navigate("/");

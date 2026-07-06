@@ -29,6 +29,10 @@ create policy "bootcamp_anon_update"
   on public.user_snapshots for update
   using (true);
 
+create policy "bootcamp_anon_delete"
+  on public.user_snapshots for delete
+  using (true);
+
 -- ---------------------------------------------------------------------------
 -- Public community chat (all users)
 -- ---------------------------------------------------------------------------
