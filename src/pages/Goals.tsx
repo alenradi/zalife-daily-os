@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { sl } from "../i18n/sl";
 import { Card, EmptyState, PageHead } from "../components/ui";
 import { GuardedInput, GuardedTextarea } from "../components/GuardedField";
 import { useAppStore } from "../store/useAppStore";
+import { goalTaskSuggestions } from "../lib/goalTaskSuggestions";
+import { todayISO } from "../lib/date";
+import { defaultSlotForDay } from "../lib/taskTime";
 import type { SmartGoal } from "../types";
 
 const blank = {
@@ -18,6 +21,28 @@ const blank = {
 function GoalCard({ goal }: { goal: SmartGoal }) {
   const completeGoal = useAppStore((s) => s.completeGoal);
   const deleteGoal = useAppStore((s) => s.deleteGoal);
+  const addPlannerTask = useAppStore((s) => s.addPlannerTask);
+  const plannerToday = useAppStore((s) => s.planner_tasks[todayISO()] ?? []);
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+
+  const suggestions = useMemo(() => goalTaskSuggestions(goal), [goal]);
+
+  const addSuggestion = (title: string) => {
+    const slot = defaultSlotForDay(
+      plannerToday.map((t) => t.start_time).filter(Boolean) as string[]
+    );
+    addPlannerTask(todayISO(), {
+      title,
+      task_description: title,
+      duration_minutes: 60,
+      start_time: slot.start,
+      end_time: slot.end,
+      priority: false,
+      recurring: false,
+    });
+    setAddedKeys((prev) => new Set(prev).add(title));
+  };
+
   return (
     <div className={`goal-card ${goal.completed ? "completed" : ""}`}>
       <div
@@ -57,6 +82,32 @@ function GoalCard({ goal }: { goal: SmartGoal }) {
           <div className="goal-identity">
             <span className="tag tag-teal">{sl.goals.identityTag}</span>
             <p>„{goal.identity_built}"</p>
+          </div>
+        )}
+        {!goal.completed && suggestions.length > 0 && (
+          <div className="goal-suggestions mt">
+            <div className="card-sub" style={{ marginBottom: 8 }}>
+              {sl.goals.suggestedTasks}
+            </div>
+            {suggestions.map((s) => (
+              <div
+                key={s.title}
+                className="row between center gap-sm"
+                style={{ marginBottom: 8 }}
+              >
+                <span className="small">{s.title}</span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  type="button"
+                  disabled={addedKeys.has(s.title)}
+                  onClick={() => addSuggestion(s.title)}
+                >
+                  {addedKeys.has(s.title)
+                    ? sl.goals.suggestedAdded
+                    : sl.goals.addSuggestedTask}
+                </button>
+              </div>
+            ))}
           </div>
         )}
         <div className="row gap-sm mt">

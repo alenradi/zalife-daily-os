@@ -32,9 +32,6 @@ export function IdentityHeaders({ editable = true }: { editable?: boolean }) {
           {sl.identity.purposeFieldLabel}
         </div>
         <div className="purpose">{purpose || sl.identity.purpose}</div>
-        <div className="sub-identity">
-          {sl.identity.jazSemLabel} {jazSem}
-        </div>
       </div>
     );
   }

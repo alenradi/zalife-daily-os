@@ -15,6 +15,11 @@ export const XP_VALUES = {
 
 export type XpEvent = keyof typeof XP_VALUES;
 
+/** Apply or reverse XP for an event. Amount is clamped so totals never go negative. */
+export function xpDelta(event: XpEvent, direction: 1 | -1, multiplier = 1): number {
+  return XP_VALUES[event] * multiplier * direction;
+}
+
 /**
  * Level threshold curve. Each level needs progressively more XP.
  * Returns total cumulative XP required to *reach* a given level.

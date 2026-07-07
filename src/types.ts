@@ -73,6 +73,8 @@ export interface DailyLog {
   night?: NightReflection;
   xp_earned: number;
   status: LifeStatus;
+  /** Prevents duplicate one-time XP awards (e.g. identity alignment). */
+  identity_alignment_awarded?: boolean;
 }
 
 export interface SmartGoal {

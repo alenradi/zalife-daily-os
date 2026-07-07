@@ -336,6 +336,9 @@ export const sl = {
     empty: "Še nimaš ciljev. Veliki voditelji najprej zarišejo cilj.",
     activeGoals: "Aktivni cilji",
     completedGoals: "Doseženi cilji",
+    suggestedTasks: "Predlagane naloge za cilj",
+    addSuggestedTask: "Dodaj v naloge",
+    suggestedAdded: "Dodano v današnje naloge",
   },
 
   mentor: {

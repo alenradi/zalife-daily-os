@@ -15,7 +15,7 @@ import type {
   UserProfile,
   WeeklyReset,
 } from "../types";
-import { XP_VALUES, levelFromXp, type XpEvent } from "../lib/xp";
+import { levelFromXp, xpDelta, type XpEvent } from "../lib/xp";
 import { todayISO, weekId, isoDaysAgo, lastNDates, nextWeekDates } from "../lib/date";
 import { defaultSlotForDay } from "../lib/taskTime";
 import { PILLARS } from "../data/pillars";
@@ -258,6 +258,8 @@ export interface AppState {
   dismissModal: () => void;
 
   addXp: (event: XpEvent, multiplier?: number) => void;
+  removeXp: (event: XpEvent, multiplier?: number) => void;
+  adjustXp: (event: XpEvent, direction: 1 | -1, multiplier?: number) => void;
 
   ensureToday: () => DailyLog;
   submitMorning: (data: Omit<MorningPlan, "date" | "submitted">) => void;
@@ -395,14 +397,21 @@ export const useAppStore = create<AppState>()((set, get) => {
         set((s) => ({ modals: s.modals.slice(1) })),
 
       addXp: (event, multiplier = 1) => {
-        const gain = XP_VALUES[event] * multiplier;
+        get().adjustXp(event, 1, multiplier);
+      },
+
+      removeXp: (event, multiplier = 1) => {
+        get().adjustXp(event, -1, multiplier);
+      },
+
+      adjustXp: (event, direction, multiplier = 1) => {
+        const gain = xpDelta(event, direction, multiplier);
+        if (gain === 0) return;
         const before = get().xp_points;
-        const after = before + gain;
+        const after = Math.max(0, before + gain);
         const prevLevel = levelFromXp(before);
         const nextLevel = levelFromXp(after);
         const date = todayISO();
-        // Keep the global total AND today's per-day ledger in sync so weekly
-        // XP / leaderboard / summaries reflect reality (was previously lost).
         set((s) => {
           const log = s.daily_logs[date] ?? {
             date,
@@ -413,11 +422,14 @@ export const useAppStore = create<AppState>()((set, get) => {
             xp_points: after,
             daily_logs: {
               ...s.daily_logs,
-              [date]: { ...log, xp_earned: log.xp_earned + gain },
+              [date]: {
+                ...log,
+                xp_earned: Math.max(0, log.xp_earned + gain),
+              },
             },
           };
         });
-        if (nextLevel > prevLevel) {
+        if (direction === 1 && nextLevel > prevLevel) {
           get().pushModal("levelup", { level: nextLevel });
         }
       },
@@ -434,6 +446,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       submitMorning: (data) => {
         const date = todayISO();
+        if (get().daily_logs[date]?.morning?.submitted) return;
         const morning: MorningPlan = { ...data, date, submitted: true };
         set((s) => {
           const log = s.daily_logs[date] ?? {
@@ -458,11 +471,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         const date = todayISO();
         const log = get().daily_logs[date];
         if (!log?.morning) return;
-        let justCompleted = false;
+        let xpEvent: XpEvent | null = null;
+        let awarding = false;
         const top_tasks = log.morning.top_tasks.map((t) => {
           if (t.id === taskId) {
-            const completed = !t.completed;
-            if (completed) justCompleted = true;
+            const wasCompleted = t.completed;
+            const completed = !wasCompleted;
+            xpEvent = "TOP_PRIORITY_TASK";
+            awarding = completed;
             return { ...t, completed };
           }
           return t;
@@ -476,11 +492,15 @@ export const useAppStore = create<AppState>()((set, get) => {
             },
           },
         }));
-        if (justCompleted) get().addXp("TOP_PRIORITY_TASK");
+        if (xpEvent) {
+          if (awarding) get().addXp(xpEvent);
+          else get().removeXp(xpEvent);
+        }
       },
 
       submitMidday: (data) => {
         const date = todayISO();
+        if (get().daily_logs[date]?.midday?.submitted) return;
         const midday: MiddayCheckin = { ...data, date, submitted: true };
         set((s) => {
           const log = s.daily_logs[date] ?? {
@@ -497,6 +517,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       submitNight: (data) => {
         const date = todayISO();
+        if (get().daily_logs[date]?.night?.submitted) return;
         const night: NightReflection = { ...data, date, submitted: true };
         set((s) => {
           const log = s.daily_logs[date] ?? {
@@ -602,6 +623,22 @@ export const useAppStore = create<AppState>()((set, get) => {
         })),
 
       awardIdentityAlignment: () => {
+        const date = todayISO();
+        const log = get().daily_logs[date];
+        if (log?.identity_alignment_awarded) return;
+        set((s) => {
+          const todayLog = s.daily_logs[date] ?? {
+            date,
+            xp_earned: 0,
+            status: s.status,
+          };
+          return {
+            daily_logs: {
+              ...s.daily_logs,
+              [date]: { ...todayLog, identity_alignment_awarded: true },
+            },
+          };
+        });
         get().addXp("IDENTITY_ALIGNMENT");
         get().pushModal("celebrate", {
           title: "Usklajen z vizijo!",
@@ -671,6 +708,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       submitSundayReset: (data) => {
         const wid = weekId();
+        if (get().weekly_resets[wid]?.submitted) return;
         const logs = Object.values(get().daily_logs);
         const xp_earned_week = get().xp_points;
         const tasks_completed_week = logs.reduce(
@@ -871,6 +909,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (recurring) {
           const done = get().recurring_done[dateISO] ?? [];
           const isDone = done.includes(id);
+          const t = get().recurring_tasks.find((x) => x.id === id);
+          const event: XpEvent = t?.priority
+            ? "TOP_PRIORITY_TASK"
+            : "TASK_COMPLETE";
           set((s) => ({
             recurring_done: {
               ...s.recurring_done,
@@ -879,22 +921,19 @@ export const useAppStore = create<AppState>()((set, get) => {
                 : [...done, id],
             },
           }));
-          if (!isDone) {
-            const t = get().recurring_tasks.find((x) => x.id === id);
-            get().addXp(t?.priority ? "TOP_PRIORITY_TASK" : "TASK_COMPLETE");
-          }
+          if (isDone) get().removeXp(event);
+          else get().addXp(event);
           return;
         }
         const list = get().planner_tasks[dateISO] ?? [];
-        let justCompleted = false;
-        let wasPriority = false;
+        let xpEvent: XpEvent | null = null;
+        let awarding = false;
         const next = list.map((t) => {
           if (t.id === id) {
-            const completed = !t.completed;
-            if (completed) {
-              justCompleted = true;
-              wasPriority = t.priority;
-            }
+            const wasCompleted = t.completed;
+            const completed = !wasCompleted;
+            xpEvent = t.priority ? "TOP_PRIORITY_TASK" : "TASK_COMPLETE";
+            awarding = completed;
             return { ...t, completed };
           }
           return t;
@@ -902,8 +941,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         set((s) => ({
           planner_tasks: { ...s.planner_tasks, [dateISO]: next },
         }));
-        if (justCompleted) {
-          get().addXp(wasPriority ? "TOP_PRIORITY_TASK" : "TASK_COMPLETE");
+        if (xpEvent) {
+          if (awarding) get().addXp(xpEvent);
+          else get().removeXp(xpEvent);
         }
       },
 
