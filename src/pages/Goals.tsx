@@ -6,7 +6,9 @@ import { useAppStore } from "../store/useAppStore";
 import { goalTaskSuggestions } from "../lib/goalTaskSuggestions";
 import { todayISO } from "../lib/date";
 import { defaultSlotForDay } from "../lib/taskTime";
-import type { SmartGoal } from "../types";
+import type { PlannerTask, SmartGoal } from "../types";
+
+const EMPTY_TASKS: PlannerTask[] = [];
 
 const blank = {
   specific: "",
@@ -22,7 +24,9 @@ function GoalCard({ goal }: { goal: SmartGoal }) {
   const completeGoal = useAppStore((s) => s.completeGoal);
   const deleteGoal = useAppStore((s) => s.deleteGoal);
   const addPlannerTask = useAppStore((s) => s.addPlannerTask);
-  const plannerToday = useAppStore((s) => s.planner_tasks[todayISO()] ?? []);
+  const plannerToday = useAppStore(
+    (s) => s.planner_tasks[todayISO()] ?? EMPTY_TASKS
+  );
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
 
   const suggestions = useMemo(() => goalTaskSuggestions(goal), [goal]);
