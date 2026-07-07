@@ -6,7 +6,7 @@
 import { getSupabase, isCloudConfigured, type UserSnapshot } from "../lib/supabase";
 import { useAppStore } from "../store/useAppStore";
 import { useAuthStore, canonicalUserId } from "../store/useAuthStore";
-import type { StudentRecord } from "../types";
+import type { AdminXpNotice, DailyLog, StudentRecord } from "../types";
 import { levelFromXp } from "../lib/xp";
 import { todayISO, lastNDates } from "../lib/date";
 
@@ -49,6 +49,7 @@ function buildSnapshot(): UserSnapshot | null {
       recurring_tasks: app.recurring_tasks,
       recurring_done: app.recurring_done,
       onboarding_completed: app.onboarding_completed,
+      admin_xp_notices: app.admin_xp_notices,
       alerted_goals: app.alerted_goals,
       alerted_reminders: app.alerted_reminders,
       drift_handled_date: app.drift_handled_date,
@@ -194,6 +195,90 @@ export async function fetchUserSnapshot(
   return (data as UserSnapshot) ?? null;
 }
 
+export type AdminXpMode = "add" | "remove" | "set" | "reset";
+
+/**
+ * Admin-only: change a student's XP directly in the cloud and attach a notice
+ * the student sees as a popup on their next app open. Also keeps today's daily
+ * ledger in sync so weekly XP / leaderboard reflect the change.
+ */
+export async function adminAdjustUserXp(params: {
+  userId: string;
+  mode: AdminXpMode;
+  amount: number;
+  reason: string;
+}): Promise<{ ok: boolean; newXp?: number; error?: string }> {
+  if (!isCloudConfigured()) return { ok: false, error: "cloud" };
+  const sb = getSupabase();
+  if (!sb) return { ok: false, error: "cloud" };
+
+  const snap = await fetchUserSnapshot(params.userId);
+  if (!snap) return { ok: false, error: "not_found" };
+
+  const data = { ...(snap.data ?? {}) } as Record<string, unknown>;
+  const currentXp = Number(data.xp_points ?? 0);
+  const amount = Math.max(0, Math.round(params.amount || 0));
+
+  let newXp = currentXp;
+  let noticeAmount = amount;
+  if (params.mode === "add") newXp = currentXp + amount;
+  else if (params.mode === "remove") newXp = Math.max(0, currentXp - amount);
+  else if (params.mode === "set") newXp = amount;
+  else if (params.mode === "reset") {
+    newXp = 0;
+    noticeAmount = currentXp;
+  }
+  data.xp_points = newXp;
+
+  const today = todayISO();
+  const logs = {
+    ...((data.daily_logs as Record<string, DailyLog>) ?? {}),
+  };
+  if (params.mode === "reset") {
+    for (const k of Object.keys(logs)) {
+      logs[k] = { ...logs[k], xp_earned: 0 };
+    }
+  } else {
+    const delta = newXp - currentXp;
+    const log =
+      logs[today] ??
+      ({
+        date: today,
+        xp_earned: 0,
+        status: (data.status as DailyLog["status"]) ?? "FLOW",
+      } as DailyLog);
+    logs[today] = {
+      ...log,
+      xp_earned: Math.max(0, Number(log.xp_earned ?? 0) + delta),
+    };
+  }
+  data.daily_logs = logs;
+
+  const notice: AdminXpNotice = {
+    id: `axp_${Math.random().toString(36).slice(2, 10)}`,
+    mode: params.mode,
+    amount: noticeAmount,
+    reason: params.reason.trim(),
+    created_at: new Date().toISOString(),
+    seen: false,
+  };
+  const prevNotices = Array.isArray(data.admin_xp_notices)
+    ? (data.admin_xp_notices as AdminXpNotice[])
+    : [];
+  data.admin_xp_notices = [...prevNotices, notice];
+
+  const { error } = await sb
+    .from("user_snapshots")
+    .update({ data, updated_at: new Date().toISOString() })
+    .eq("user_id", params.userId);
+
+  if (error) {
+    console.error("[sync] admin xp update failed", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, newXp };
+}
+
 /** Legacy rows may exist under random ids — resolve by email. */
 export async function fetchUserSnapshotsByEmail(
   email: string
@@ -258,6 +343,7 @@ export function snapshotDataToPartial(
     recurring_tasks: data.recurring_tasks,
     recurring_done: data.recurring_done,
     onboarding_completed: data.onboarding_completed,
+    admin_xp_notices: data.admin_xp_notices,
     alerted_goals: data.alerted_goals,
     alerted_reminders: data.alerted_reminders,
     chat: data.chat,

@@ -109,6 +109,39 @@ export function ModalProvider() {
     );
   }
 
+  if (current.kind === "admin_xp") {
+    const mode = String(current.payload?.mode ?? "add");
+    const amount = Number(current.payload?.amount ?? 0);
+    const reason = String(current.payload?.reason ?? "");
+    const message =
+      mode === "add"
+        ? sl.adminXp.add(amount, reason)
+        : mode === "remove"
+          ? sl.adminXp.remove(amount, reason)
+          : mode === "set"
+            ? sl.adminXp.set(amount, reason)
+            : sl.adminXp.reset(reason);
+    const positive = mode === "add";
+    return (
+      <div className="modal-overlay">
+        <div
+          className="modal modal-levelup"
+          style={{ position: "relative", overflow: "hidden" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="modal-emoji">{positive ? "🎁" : "⚖️"}</span>
+          <h2>{sl.adminXp.title}</h2>
+          <p>{message}</p>
+          <div className="modal-actions">
+            <button className="btn btn-primary" onClick={close}>
+              {sl.adminXp.ack}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (current.kind === "drift") {
     const warnings = Number(current.payload?.warnings ?? 1);
     return (

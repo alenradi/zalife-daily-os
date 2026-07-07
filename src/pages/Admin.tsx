@@ -3,7 +3,124 @@ import { sl } from "../i18n/sl";
 import { Card, PageHead, StatTile } from "../components/ui";
 import { useCloudUsers } from "../hooks/useCloudUsers";
 import { isCloudConfigured } from "../lib/supabase";
+import { adminAdjustUserXp, type AdminXpMode } from "../api/sync";
 import type { StudentRecord } from "../types";
+
+function XpManager({
+  student,
+  onDone,
+}: {
+  student: StudentRecord;
+  onDone: () => void;
+}) {
+  const [mode, setMode] = useState<AdminXpMode>("add");
+  const [amount, setAmount] = useState(100);
+  const [reasonPreset, setReasonPreset] = useState(sl.adminXp.reasons[0]);
+  const [customReason, setCustomReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const isCustom = reasonPreset === sl.adminXp.customReason;
+  const reason = isCustom ? customReason.trim() : reasonPreset;
+  const needsAmount = mode !== "reset";
+  const canApply =
+    !busy && reason.length > 1 && (!needsAmount || amount > 0);
+
+  const apply = async () => {
+    if (!canApply) return;
+    setBusy(true);
+    setNote("");
+    setError("");
+    const res = await adminAdjustUserXp({
+      userId: student.user_id,
+      mode,
+      amount,
+      reason,
+    });
+    setBusy(false);
+    if (res.ok) {
+      setNote(sl.adminXp.applied(res.newXp ?? 0));
+      setCustomReason("");
+      onDone();
+    } else {
+      setError(sl.adminXp.failed);
+    }
+  };
+
+  return (
+    <Card title={sl.adminXp.manageTitle} sub={sl.adminXp.manageSub} className="mt">
+      <div className="row gap-sm" style={{ flexWrap: "wrap", marginBottom: 12 }}>
+        {(["add", "remove", "set", "reset"] as AdminXpMode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={`btn btn-sm ${mode === m ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setMode(m)}
+          >
+            {sl.adminXp.modes[m]}
+          </button>
+        ))}
+      </div>
+
+      {needsAmount && (
+        <div className="field">
+          <label>{sl.adminXp.amountLabel}</label>
+          <input
+            type="number"
+            min={0}
+            step={10}
+            className="input"
+            value={amount}
+            onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
+          />
+        </div>
+      )}
+
+      <div className="field">
+        <label>{sl.adminXp.reasonLabel}</label>
+        <select
+          className="input"
+          value={reasonPreset}
+          onChange={(e) => setReasonPreset(e.target.value)}
+        >
+          {sl.adminXp.reasons.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+          <option value={sl.adminXp.customReason}>
+            {sl.adminXp.customReason}
+          </option>
+        </select>
+      </div>
+
+      {isCustom && (
+        <div className="field">
+          <input
+            className="input"
+            placeholder={sl.adminXp.customPlaceholder}
+            value={customReason}
+            onChange={(e) => setCustomReason(e.target.value)}
+          />
+        </div>
+      )}
+
+      <button
+        className="btn btn-primary btn-block mt"
+        type="button"
+        disabled={!canApply}
+        onClick={apply}
+      >
+        {busy ? sl.adminXp.applying : sl.adminXp.applyBtn}
+      </button>
+
+      {note && <p className="small text-teal mt-sm">{note}</p>}
+      {error && <p className="small text-crimson mt-sm">{error}</p>}
+      <p className="small text-muted mt-sm">{sl.adminXp.syncHint}</p>
+    </Card>
+  );
+}
 
 function progressScore(s: StudentRecord) {
   const weekly = Math.min(40, Math.round((s.weekly_xp / 1200) * 40));
@@ -23,7 +140,7 @@ function formatDate(iso?: string) {
 }
 
 export function Admin() {
-  const { all, loading, me } = useCloudUsers();
+  const { all, loading, me, reload } = useCloudUsers();
 
   const [selectedId, setSelectedId] = useState(me.user_id);
 
@@ -270,6 +387,10 @@ export function Admin() {
                   : "Učenec je v Toku. Ohranjaj momentum z jasnim tedenskim izzivom."}
             </p>
           </div>
+
+          {isCloudConfigured() && (
+            <XpManager student={selected} onDone={reload} />
+          )}
         </Card>
       </div>
     </div>

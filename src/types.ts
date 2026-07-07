@@ -150,6 +150,18 @@ export interface UserProfile {
   calendar_email?: string;
 }
 
+/** An XP change performed by an admin, surfaced to the student as a popup. */
+export interface AdminXpNotice {
+  id: string;
+  mode: "add" | "remove" | "set" | "reset";
+  /** add/remove: delta magnitude · set: new total · reset: previous total removed */
+  amount: number;
+  reason: string;
+  created_at: string;
+  /** True once the student has acknowledged the popup. */
+  seen?: boolean;
+}
+
 /** Logged when a user changes their locked identity fields. */
 export interface IdentityChangeEntry {
   id: string;

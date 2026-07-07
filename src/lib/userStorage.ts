@@ -46,6 +46,7 @@ export function pickPersistable(state: AppState): Record<string, unknown> {
     recurring_done: state.recurring_done,
     chat: state.chat,
     onboarding_completed: state.onboarding_completed,
+    admin_xp_notices: state.admin_xp_notices,
   };
 }
 

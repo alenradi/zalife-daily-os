@@ -13,6 +13,7 @@ import { useDriftWatcher } from "./hooks/useDriftWatcher";
 import { useReminderEngine } from "./hooks/useReminderEngine";
 import { useCloudSync } from "./hooks/useCloudSync";
 import { useUserSession } from "./hooks/useUserSession";
+import { useAdminNotices } from "./hooks/useAdminNotices";
 import { useAuthStore } from "./store/useAuthStore";
 
 import { Login } from "./pages/Login";
@@ -41,6 +42,7 @@ function ProtectedApp() {
   useDriftWatcher();
   useReminderEngine();
   useCloudSync();
+  useAdminNotices();
   return <AppShell />;
 }
 

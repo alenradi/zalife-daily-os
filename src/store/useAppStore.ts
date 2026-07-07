@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import type {
+  AdminXpNotice,
   ChatMessage,
   DailyLog,
   IdentityChangeEntry,
@@ -37,7 +38,9 @@ export type ModalKind =
   | "identity_check"
   | "deadline"
   // terminal night reflection summary
-  | "daily_summary";
+  | "daily_summary"
+  // admin adjusted this student's XP
+  | "admin_xp";
 
 export interface ModalItem {
   id: string;
@@ -145,6 +148,7 @@ function buildUserState(
     chat: [] as ChatMessage[],
     modals: [] as ModalItem[],
     onboarding_completed: false,
+    admin_xp_notices: [] as AdminXpNotice[],
   };
 }
 
@@ -165,6 +169,7 @@ function mergeLoadedState(
   merged.pillars = migratePillars(saved.pillars);
   merged.modals = [];
   merged.identity_editing = false;
+  merged.admin_xp_notices = saved.admin_xp_notices ?? [];
   merged.alerted_reminders = saved.alerted_reminders ?? {};
   merged.next_week_plan_applied_week = saved.next_week_plan_applied_week ?? null;
   if (saved.chat?.length) {
@@ -253,9 +258,13 @@ export interface AppState {
   // ----- onboarding -----
   onboarding_completed: boolean;
 
+  // ----- admin-issued XP notices (shown as popup, then acknowledged) -----
+  admin_xp_notices: AdminXpNotice[];
+
   // ===== actions =====
   pushModal: (kind: ModalKind, payload?: Record<string, unknown>) => void;
   dismissModal: () => void;
+  markAdminNoticesSeen: (ids: string[]) => void;
 
   addXp: (event: XpEvent, multiplier?: number) => void;
   removeXp: (event: XpEvent, multiplier?: number) => void;
@@ -395,6 +404,13 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       dismissModal: () =>
         set((s) => ({ modals: s.modals.slice(1) })),
+
+      markAdminNoticesSeen: (ids) =>
+        set((s) => ({
+          admin_xp_notices: s.admin_xp_notices.map((n) =>
+            ids.includes(n.id) ? { ...n, seen: true } : n
+          ),
+        })),
 
       addXp: (event, multiplier = 1) => {
         get().adjustXp(event, 1, multiplier);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchAllUserSnapshots,
   snapshotToStudentRecord,
@@ -12,6 +12,9 @@ export function useCloudUsers() {
   const me = useMyRecord();
   const [cloudUsers, setCloudUsers] = useState<StudentRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [nonce, setNonce] = useState(0);
+
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
     if (!isCloudConfigured()) {
@@ -22,7 +25,7 @@ export function useCloudUsers() {
     void fetchAllUserSnapshots()
       .then((snaps) => setCloudUsers(snaps.map(snapshotToStudentRecord)))
       .finally(() => setLoading(false));
-  }, [me.user_id]);
+  }, [me.user_id, nonce]);
 
   const all = useMemo(() => {
     const byEmail = new Map<string, StudentRecord>();
@@ -37,5 +40,5 @@ export function useCloudUsers() {
     return [...byEmail.values()];
   }, [cloudUsers, me]);
 
-  return { all, loading, me };
+  return { all, loading, me, reload };
 }

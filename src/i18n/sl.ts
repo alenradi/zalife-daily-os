@@ -399,6 +399,43 @@ export const sl = {
     lockOut: "Zakleni",
   },
 
+  adminXp: {
+    manageTitle: "Upravljanje XP točk",
+    manageSub: "Dodeli, odvzemi ali resetiraj točke izbranemu udeležencu.",
+    modes: {
+      add: "Dodaj",
+      remove: "Odvzemi",
+      set: "Nastavi",
+      reset: "Resetiraj",
+    } as Record<string, string>,
+    amountLabel: "Število točk",
+    reasonLabel: "Razlog",
+    reasons: [
+      "sodelovanja na delavnici",
+      "bug abuse",
+      "kršenja integritete",
+      "izjemnega napredka",
+    ],
+    customReason: "Drug razlog ...",
+    customPlaceholder: "Vpiši razlog",
+    applyBtn: "Uporabi spremembo",
+    applying: "Shranjujem ...",
+    applied: (xp: number) => `Shranjeno. Nove točke: ${xp} XP.`,
+    failed: "Sprememba ni uspela. Poskusi znova.",
+    syncHint:
+      "Udeleženec bo spremembo in razlog videl kot obvestilo ob naslednjem odprtju aplikacije.",
+    title: "Sporočilo administratorja",
+    ack: "Razumem",
+    add: (n: number, reason: string) =>
+      `Admin ti je dodelil ${n} točk zaradi: ${reason}.`,
+    remove: (n: number, reason: string) =>
+      `Admin ti je odvzel ${n} točk zaradi: ${reason}.`,
+    set: (n: number, reason: string) =>
+      `Admin ti je nastavil točke na ${n} zaradi: ${reason}.`,
+    reset: (reason: string) =>
+      `Admin ti je resetiral točke zaradi: ${reason}.`,
+  },
+
   profile: {
     title: "Profil",
     subtitle: "Tvoja identiteta in povezave.",
